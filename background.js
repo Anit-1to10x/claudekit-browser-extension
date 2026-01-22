@@ -6,6 +6,13 @@
  * Connects to WebSocket server and executes browser automation commands
  */
 
+/**
+ * 10X.in Universal Browser Automation v2.0 - Background Service Worker
+ * GOD-LEVEL Browser Automation
+ *
+ * Developed by team 10X.in
+ */
+
 // Configuration
 const CONFIG = {
   WEBSOCKET_URL: 'ws://localhost:3000/ws',
@@ -25,196 +32,25 @@ let pendingCommands = [];
 
 // Database stores (IndexedDB)
 const DB_NAME = '10XBrowser';
-const DB_VERSION = 2;  // Upgraded for LOGS store
+const DB_VERSION = 2;
 const STORES = {
   ACTIVITIES: 'activities',
   COMMANDS: 'commands',
   RESULTS: 'results',
   SETTINGS: 'settings',
   PROSPECTS: 'prospects',
-  LOGS: 'logs'  // New store for audit logs
+  WORKFLOWS: 'workflows',
+  RECORDINGS: 'recordings',
+  SELECTORS: 'selectors',
+  SCHEDULES: 'schedules',
+  VARIABLES: 'variables'
 };
+
+// State for new features
+let lastWorkflowId = null;
+let activeRecording = null;
 
 let db = null;
-
-// ============================================================================
-// LOGGING SYSTEM - For debugging and auditing
-// ============================================================================
-
-const LOG_LEVELS = {
-  DEBUG: 0,
-  INFO: 1,
-  WARN: 2,
-  ERROR: 3,
-  ACTION: 4  // User/automation actions
-};
-
-let currentLogLevel = LOG_LEVELS.INFO;
-
-/**
- * Log entry with persistence
- */
-async function logEntry(level, category, message, data = null) {
-  const timestamp = Date.now();
-  const logLevelName = Object.keys(LOG_LEVELS).find(k => LOG_LEVELS[k] === level) || 'INFO';
-
-  const entry = {
-    timestamp,
-    date: new Date(timestamp).toISOString(),
-    level: logLevelName,
-    category,
-    message,
-    data: data ? JSON.stringify(data) : null
-  };
-
-  // Console output
-  const prefix = `[10X ${logLevelName}] [${category}]`;
-  if (level >= currentLogLevel) {
-    switch (level) {
-      case LOG_LEVELS.ERROR:
-        console.error(prefix, message, data || '');
-        break;
-      case LOG_LEVELS.WARN:
-        console.warn(prefix, message, data || '');
-        break;
-      case LOG_LEVELS.ACTION:
-        console.log(`%c${prefix}`, 'color: #6366f1; font-weight: bold', message, data || '');
-        break;
-      default:
-        console.log(prefix, message, data || '');
-    }
-  }
-
-  // Save to IndexedDB
-  if (db) {
-    try {
-      const transaction = db.transaction([STORES.LOGS], 'readwrite');
-      const store = transaction.objectStore(STORES.LOGS);
-      await store.add(entry);
-    } catch (error) {
-      console.error('[10X Browser] Failed to save log entry:', error);
-    }
-  }
-
-  return entry;
-}
-
-// Logging helper functions
-const Logger = {
-  debug: (category, message, data) => logEntry(LOG_LEVELS.DEBUG, category, message, data),
-  info: (category, message, data) => logEntry(LOG_LEVELS.INFO, category, message, data),
-  warn: (category, message, data) => logEntry(LOG_LEVELS.WARN, category, message, data),
-  error: (category, message, data) => logEntry(LOG_LEVELS.ERROR, category, message, data),
-  action: (category, message, data) => logEntry(LOG_LEVELS.ACTION, category, message, data),
-
-  // Specialized loggers
-  mcp: (action, details) => logEntry(LOG_LEVELS.ACTION, 'MCP', action, details),
-  skill: (skillName, action, details) => logEntry(LOG_LEVELS.ACTION, 'SKILL', `${skillName}: ${action}`, details),
-  browser: (action, details) => logEntry(LOG_LEVELS.ACTION, 'BROWSER', action, details),
-  websocket: (action, details) => logEntry(LOG_LEVELS.INFO, 'WEBSOCKET', action, details),
-  command: (action, details) => logEntry(LOG_LEVELS.ACTION, 'COMMAND', action, details)
-};
-
-/**
- * Get logs with filtering
- */
-async function getLogs(filters = {}) {
-  if (!db) return [];
-
-  return new Promise((resolve, reject) => {
-    const transaction = db.transaction([STORES.LOGS], 'readonly');
-    const store = transaction.objectStore(STORES.LOGS);
-    const request = store.getAll();
-
-    request.onsuccess = () => {
-      let logs = request.result;
-
-      // Apply filters
-      if (filters.level) {
-        logs = logs.filter(l => l.level === filters.level);
-      }
-      if (filters.category) {
-        logs = logs.filter(l => l.category === filters.category);
-      }
-      if (filters.startDate) {
-        const start = new Date(filters.startDate).getTime();
-        logs = logs.filter(l => l.timestamp >= start);
-      }
-      if (filters.endDate) {
-        const end = new Date(filters.endDate).getTime();
-        logs = logs.filter(l => l.timestamp <= end);
-      }
-      if (filters.search) {
-        const search = filters.search.toLowerCase();
-        logs = logs.filter(l =>
-          l.message.toLowerCase().includes(search) ||
-          (l.data && l.data.toLowerCase().includes(search))
-        );
-      }
-
-      // Sort by timestamp descending
-      logs.sort((a, b) => b.timestamp - a.timestamp);
-
-      // Apply limit
-      if (filters.limit) {
-        logs = logs.slice(0, filters.limit);
-      }
-
-      resolve(logs);
-    };
-
-    request.onerror = () => reject(request.error);
-  });
-}
-
-/**
- * Export logs to JSON
- */
-async function exportLogs(filters = {}) {
-  const logs = await getLogs(filters);
-
-  const exportData = {
-    exportedAt: new Date().toISOString(),
-    totalLogs: logs.length,
-    filters: filters,
-    logs: logs
-  };
-
-  return JSON.stringify(exportData, null, 2);
-}
-
-/**
- * Clear old logs (keep last N days)
- */
-async function clearOldLogs(daysToKeep = 30) {
-  if (!db) return;
-
-  const cutoffTime = Date.now() - (daysToKeep * 24 * 60 * 60 * 1000);
-
-  return new Promise((resolve, reject) => {
-    const transaction = db.transaction([STORES.LOGS], 'readwrite');
-    const store = transaction.objectStore(STORES.LOGS);
-    const index = store.index('timestamp');
-    const range = IDBKeyRange.upperBound(cutoffTime);
-
-    let deletedCount = 0;
-    const cursorRequest = index.openCursor(range);
-
-    cursorRequest.onsuccess = (event) => {
-      const cursor = event.target.result;
-      if (cursor) {
-        cursor.delete();
-        deletedCount++;
-        cursor.continue();
-      } else {
-        Logger.info('LOGS', `Cleared ${deletedCount} old log entries`);
-        resolve(deletedCount);
-      }
-    };
-
-    cursorRequest.onerror = () => reject(cursorRequest.error);
-  });
-}
 
 // Initialize IndexedDB
 function initDatabase() {
@@ -279,215 +115,36 @@ function initDatabase() {
         db.createObjectStore(STORES.SETTINGS, { keyPath: 'key' });
       }
 
-      // Logs store (new in version 2)
-      if (!db.objectStoreNames.contains(STORES.LOGS)) {
-        const logsStore = db.createObjectStore(STORES.LOGS, {
-          keyPath: 'id',
-          autoIncrement: true
-        });
-        logsStore.createIndex('timestamp', 'timestamp', { unique: false });
-        logsStore.createIndex('level', 'level', { unique: false });
-        logsStore.createIndex('category', 'category', { unique: false });
-        logsStore.createIndex('date', 'date', { unique: false });
+      // Workflows store (v2)
+      if (!db.objectStoreNames.contains(STORES.WORKFLOWS)) {
+        const workflowStore = db.createObjectStore(STORES.WORKFLOWS, { keyPath: 'id' });
+        workflowStore.createIndex('name', 'name', { unique: false });
+        workflowStore.createIndex('createdAt', 'createdAt', { unique: false });
+      }
+
+      // Recordings store (v2)
+      if (!db.objectStoreNames.contains(STORES.RECORDINGS)) {
+        const recordingStore = db.createObjectStore(STORES.RECORDINGS, { keyPath: 'id' });
+        recordingStore.createIndex('timestamp', 'timestamp', { unique: false });
+      }
+
+      // Selectors cache store (v2)
+      if (!db.objectStoreNames.contains(STORES.SELECTORS)) {
+        const selectorStore = db.createObjectStore(STORES.SELECTORS, { keyPath: 'key' });
+        selectorStore.createIndex('domain', 'domain', { unique: false });
+      }
+
+      // Schedules store (v2)
+      if (!db.objectStoreNames.contains(STORES.SCHEDULES)) {
+        const scheduleStore = db.createObjectStore(STORES.SCHEDULES, { keyPath: 'id' });
+        scheduleStore.createIndex('workflowId', 'workflowId', { unique: false });
+      }
+
+      // Variables store (v2)
+      if (!db.objectStoreNames.contains(STORES.VARIABLES)) {
+        db.createObjectStore(STORES.VARIABLES, { keyPath: 'key' });
       }
     };
-  });
-}
-
-// ============================================================================
-// PLATFORM DATA FETCHERS - Replace MCP for authenticated data
-// ============================================================================
-
-/**
- * Fetch Google Ads performance data (when logged in)
- */
-async function fetchGoogleAdsData(options = {}) {
-  const { dateRange = 'LAST_30_DAYS', metrics = ['clicks', 'impressions', 'cost', 'conversions'] } = options;
-
-  Logger.action('GOOGLE_ADS', 'Fetching ads performance data', { dateRange, metrics });
-
-  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-
-  // Navigate to Google Ads if not already there
-  if (!tab.url.includes('ads.google.com')) {
-    await chrome.tabs.update(tab.id, { url: 'https://ads.google.com' });
-    await waitForPageLoad(tab.id);
-  }
-
-  try {
-    const result = await chrome.scripting.executeScript({
-      target: { tabId: tab.id },
-      func: (opts) => {
-        // This would scrape the Google Ads dashboard
-        // Returns campaign performance data
-        const data = {
-          scraped: true,
-          timestamp: Date.now(),
-          campaigns: [],
-          summary: {}
-        };
-
-        // Scrape overview metrics if visible
-        const overviewCards = document.querySelectorAll('[data-metric]');
-        overviewCards.forEach(card => {
-          const metric = card.getAttribute('data-metric');
-          const value = card.textContent.trim();
-          data.summary[metric] = value;
-        });
-
-        // Scrape campaign table if visible
-        const rows = document.querySelectorAll('table tbody tr');
-        rows.forEach(row => {
-          const cells = row.querySelectorAll('td');
-          if (cells.length > 0) {
-            data.campaigns.push({
-              name: cells[0]?.textContent?.trim(),
-              status: cells[1]?.textContent?.trim(),
-              clicks: cells[2]?.textContent?.trim(),
-              impressions: cells[3]?.textContent?.trim(),
-              cost: cells[4]?.textContent?.trim()
-            });
-          }
-        });
-
-        return data;
-      },
-      args: [options]
-    });
-
-    Logger.action('GOOGLE_ADS', 'Data fetched successfully', result[0].result);
-    return { success: true, data: result[0].result };
-
-  } catch (error) {
-    Logger.error('GOOGLE_ADS', 'Failed to fetch data', { error: error.message });
-    return { success: false, error: error.message };
-  }
-}
-
-/**
- * Fetch Google Analytics data (when logged in)
- */
-async function fetchGoogleAnalyticsData(options = {}) {
-  const { propertyId, dateRange = 'last28Days' } = options;
-
-  Logger.action('GOOGLE_ANALYTICS', 'Fetching analytics data', { propertyId, dateRange });
-
-  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-
-  // Navigate to Google Analytics if not already there
-  const gaUrl = propertyId
-    ? `https://analytics.google.com/analytics/web/#/p${propertyId}/reports/dashboard`
-    : 'https://analytics.google.com/analytics/web/';
-
-  if (!tab.url.includes('analytics.google.com')) {
-    await chrome.tabs.update(tab.id, { url: gaUrl });
-    await waitForPageLoad(tab.id);
-  }
-
-  try {
-    const result = await chrome.scripting.executeScript({
-      target: { tabId: tab.id },
-      func: () => {
-        // Scrape GA4 dashboard
-        const data = {
-          scraped: true,
-          timestamp: Date.now(),
-          metrics: {},
-          topPages: [],
-          topSources: []
-        };
-
-        // Scrape metric cards
-        const metricCards = document.querySelectorAll('[data-test-id="metric-card"]');
-        metricCards.forEach(card => {
-          const label = card.querySelector('[data-test-id="metric-label"]')?.textContent?.trim();
-          const value = card.querySelector('[data-test-id="metric-value"]')?.textContent?.trim();
-          if (label && value) {
-            data.metrics[label] = value;
-          }
-        });
-
-        return data;
-      }
-    });
-
-    Logger.action('GOOGLE_ANALYTICS', 'Data fetched successfully', result[0].result);
-    return { success: true, data: result[0].result };
-
-  } catch (error) {
-    Logger.error('GOOGLE_ANALYTICS', 'Failed to fetch data', { error: error.message });
-    return { success: false, error: error.message };
-  }
-}
-
-/**
- * Fetch LinkedIn Analytics (when logged in)
- */
-async function fetchLinkedInAnalytics(options = {}) {
-  Logger.action('LINKEDIN_ANALYTICS', 'Fetching LinkedIn analytics', options);
-
-  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-
-  if (!tab.url.includes('linkedin.com')) {
-    await chrome.tabs.update(tab.id, { url: 'https://www.linkedin.com/analytics/' });
-    await waitForPageLoad(tab.id);
-  }
-
-  try {
-    const result = await chrome.scripting.executeScript({
-      target: { tabId: tab.id },
-      func: () => {
-        const data = {
-          scraped: true,
-          timestamp: Date.now(),
-          profileViews: null,
-          postImpressions: null,
-          searchAppearances: null
-        };
-
-        // Scrape analytics dashboard
-        const metrics = document.querySelectorAll('.analytics-content-metric');
-        metrics.forEach(metric => {
-          const label = metric.querySelector('.analytics-content-metric__label')?.textContent?.trim();
-          const value = metric.querySelector('.analytics-content-metric__value')?.textContent?.trim();
-          if (label?.includes('Profile views')) data.profileViews = value;
-          if (label?.includes('Post impressions')) data.postImpressions = value;
-          if (label?.includes('Search appearances')) data.searchAppearances = value;
-        });
-
-        return data;
-      }
-    });
-
-    Logger.action('LINKEDIN_ANALYTICS', 'Data fetched successfully', result[0].result);
-    return { success: true, data: result[0].result };
-
-  } catch (error) {
-    Logger.error('LINKEDIN_ANALYTICS', 'Failed to fetch data', { error: error.message });
-    return { success: false, error: error.message };
-  }
-}
-
-/**
- * Helper: Wait for page load
- */
-function waitForPageLoad(tabId, timeout = 30000) {
-  return new Promise((resolve, reject) => {
-    const timeoutId = setTimeout(() => {
-      chrome.tabs.onUpdated.removeListener(listener);
-      reject(new Error('Page load timeout'));
-    }, timeout);
-
-    function listener(updatedTabId, info) {
-      if (updatedTabId === tabId && info.status === 'complete') {
-        clearTimeout(timeoutId);
-        chrome.tabs.onUpdated.removeListener(listener);
-        // Additional wait for JS to load
-        setTimeout(resolve, 1500);
-      }
-    }
-
-    chrome.tabs.onUpdated.addListener(listener);
   });
 }
 
@@ -619,18 +276,16 @@ function getAllProspects() {
 }
 
 // Initialize extension
-Logger.info('INIT', 'Extension loaded', { version: chrome.runtime.getManifest().version });
+console.log('[10X Browser] Extension loaded');
 
 // Initialize database first, then connect
 initDatabase()
   .then(() => {
-    Logger.info('INIT', 'Database ready');
-    // Clear logs older than 30 days on startup
-    clearOldLogs(30).catch(() => {});
+    console.log('[10X Browser] Database ready');
     connectToWebSocket();
   })
   .catch((error) => {
-    Logger.error('INIT', 'Failed to initialize database', { error: error.message });
+    console.error('[10X Browser] Failed to initialize database:', error);
     // Still try to connect even if database fails
     connectToWebSocket();
   });
@@ -664,7 +319,7 @@ function connectToWebSocket() {
  * Handle WebSocket open
  */
 function handleWebSocketOpen() {
-  Logger.websocket('Connected to Canvas WebSocket', { url: CONFIG.WEBSOCKET_URL });
+  console.log('[10X Browser] ✅ Connected to Canvas WebSocket');
   isConnected = true;
   reconnectAttempts = 0;
 
@@ -685,8 +340,6 @@ function handleWebSocketOpen() {
         'click',
         'type',
         'scrape',
-        'screenshot',
-        'full_page_screenshot',
         'linkedin',
         'instagram',
         'twitter',
@@ -735,83 +388,12 @@ async function handleWebSocketMessage(event) {
         await executeGoogleAction(message.payload);
         break;
 
-      case 'screenshot-request':
-        // Handle screenshot request from WebSocket (Canvas/Dashboard)
-        const screenshotResult = await captureScreenshot(message.payload || {});
-        sendToWebSocket({
-          type: 'screenshot-response',
-          requestId: message.requestId,
-          ...screenshotResult
-        });
-        break;
-
-      case 'full-page-screenshot-request':
-        // Handle full page screenshot request from WebSocket
-        const fullPageResult = await captureFullPageScreenshot(message.payload || {});
-        sendToWebSocket({
-          type: 'full-page-screenshot-response',
-          requestId: message.requestId,
-          ...fullPageResult
-        });
-        break;
-
       case 'ping':
         sendToWebSocket({ type: 'pong', timestamp: Date.now() });
         break;
 
-      // Data fetching via WebSocket
-      case 'fetch-google-ads':
-        Logger.action('WEBSOCKET', 'Google Ads data request received');
-        const wsAdsData = await fetchGoogleAdsData(message.payload || {});
-        sendToWebSocket({
-          type: 'google-ads-data',
-          requestId: message.requestId,
-          ...wsAdsData
-        });
-        break;
-
-      case 'fetch-google-analytics':
-        Logger.action('WEBSOCKET', 'Google Analytics data request received');
-        const wsGaData = await fetchGoogleAnalyticsData(message.payload || {});
-        sendToWebSocket({
-          type: 'google-analytics-data',
-          requestId: message.requestId,
-          ...wsGaData
-        });
-        break;
-
-      case 'fetch-linkedin-analytics':
-        Logger.action('WEBSOCKET', 'LinkedIn Analytics data request received');
-        const wsLiData = await fetchLinkedInAnalytics(message.payload || {});
-        sendToWebSocket({
-          type: 'linkedin-analytics-data',
-          requestId: message.requestId,
-          ...wsLiData
-        });
-        break;
-
-      case 'get-logs':
-        const wsLogs = await getLogs(message.payload || {});
-        sendToWebSocket({
-          type: 'logs-response',
-          requestId: message.requestId,
-          success: true,
-          logs: wsLogs
-        });
-        break;
-
-      case 'export-logs':
-        const wsExportedLogs = await exportLogs(message.payload || {});
-        sendToWebSocket({
-          type: 'logs-export-response',
-          requestId: message.requestId,
-          success: true,
-          data: wsExportedLogs
-        });
-        break;
-
       default:
-        Logger.warn('WEBSOCKET', `Unknown message type: ${message.type}`);
+        console.warn('[10X Browser] Unknown message type:', message.type);
     }
 
   } catch (error) {
@@ -957,14 +539,6 @@ async function executeBrowserCommand(command) {
 
       case 'EXECUTE_SCRIPT':
         result = await executeScript(command.script, command.args);
-        break;
-
-      case 'SCREENSHOT':
-        result = await captureScreenshot(command.options || {});
-        break;
-
-      case 'FULL_PAGE_SCREENSHOT':
-        result = await captureFullPageScreenshot(command.options || {});
         break;
 
       default:
@@ -1134,172 +708,6 @@ async function executeScript(script, args = []) {
   });
 
   return result[0].result;
-}
-
-/**
- * Capture visible tab screenshot
- */
-async function captureScreenshot(options = {}) {
-  const { format = 'png', quality = 100, filename = null, download = false } = options;
-
-  try {
-    // Capture the visible tab
-    const dataUrl = await chrome.tabs.captureVisibleTab(null, {
-      format: format === 'jpg' ? 'jpeg' : 'png',
-      quality: quality
-    });
-
-    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-    const defaultFilename = `screenshot_${timestamp}.${format}`;
-    const finalFilename = filename || defaultFilename;
-
-    // If download is requested, save the file
-    if (download) {
-      const downloadId = await chrome.downloads.download({
-        url: dataUrl,
-        filename: finalFilename,
-        saveAs: false
-      });
-
-      return {
-        success: true,
-        type: 'screenshot',
-        downloadId: downloadId,
-        filename: finalFilename
-      };
-    }
-
-    // Return base64 data
-    return {
-      success: true,
-      type: 'screenshot',
-      dataUrl: dataUrl,
-      format: format,
-      timestamp: timestamp
-    };
-
-  } catch (error) {
-    console.error('[10X Browser] Screenshot capture failed:', error);
-    throw error;
-  }
-}
-
-/**
- * Capture full page screenshot by scrolling
- */
-async function captureFullPageScreenshot(options = {}) {
-  const { format = 'png', quality = 100, filename = null, download = false } = options;
-
-  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-
-  try {
-    // Get page dimensions
-    const dimensions = await chrome.scripting.executeScript({
-      target: { tabId: tab.id },
-      func: () => {
-        return {
-          scrollHeight: Math.max(
-            document.body.scrollHeight,
-            document.documentElement.scrollHeight
-          ),
-          scrollWidth: Math.max(
-            document.body.scrollWidth,
-            document.documentElement.scrollWidth
-          ),
-          clientHeight: document.documentElement.clientHeight,
-          clientWidth: document.documentElement.clientWidth,
-          originalScrollTop: window.scrollY,
-          originalScrollLeft: window.scrollX
-        };
-      }
-    });
-
-    const { scrollHeight, clientHeight, originalScrollTop } = dimensions[0].result;
-    const screenshots = [];
-    let currentY = 0;
-
-    // Capture screenshots by scrolling
-    while (currentY < scrollHeight) {
-      // Scroll to position
-      await chrome.scripting.executeScript({
-        target: { tabId: tab.id },
-        func: (y) => window.scrollTo(0, y),
-        args: [currentY]
-      });
-
-      // Wait for scroll and render
-      await new Promise(resolve => setTimeout(resolve, 150));
-
-      // Capture visible portion
-      const screenshot = await chrome.tabs.captureVisibleTab(null, {
-        format: format === 'jpg' ? 'jpeg' : 'png',
-        quality: quality
-      });
-
-      screenshots.push({
-        dataUrl: screenshot,
-        yOffset: currentY
-      });
-
-      currentY += clientHeight;
-    }
-
-    // Restore original scroll position
-    await chrome.scripting.executeScript({
-      target: { tabId: tab.id },
-      func: (y) => window.scrollTo(0, y),
-      args: [originalScrollTop]
-    });
-
-    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-
-    // If only one screenshot, return directly
-    if (screenshots.length === 1) {
-      const defaultFilename = `fullpage_screenshot_${timestamp}.${format}`;
-      const finalFilename = filename || defaultFilename;
-
-      if (download) {
-        const downloadId = await chrome.downloads.download({
-          url: screenshots[0].dataUrl,
-          filename: finalFilename,
-          saveAs: false
-        });
-
-        return {
-          success: true,
-          type: 'full_page_screenshot',
-          downloadId: downloadId,
-          filename: finalFilename,
-          parts: 1
-        };
-      }
-
-      return {
-        success: true,
-        type: 'full_page_screenshot',
-        dataUrl: screenshots[0].dataUrl,
-        format: format,
-        timestamp: timestamp,
-        parts: 1
-      };
-    }
-
-    // Multiple screenshots - return all parts
-    return {
-      success: true,
-      type: 'full_page_screenshot',
-      screenshots: screenshots,
-      format: format,
-      timestamp: timestamp,
-      parts: screenshots.length,
-      totalHeight: scrollHeight,
-      viewportHeight: clientHeight
-    };
-
-  } catch (error) {
-    console.error('[10X Browser] Full page screenshot capture failed:', error);
-    throw error;
-  }
 }
 
 /**
@@ -1481,102 +889,205 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           sendResponse({ success: true });
           break;
 
-        case 'TAKE_SCREENSHOT':
-          // Capture screenshot from popup or content script
-          const screenshotResult = await captureScreenshot(message.options || {});
-          sendResponse(screenshotResult);
+        // ========== Recording Handlers ==========
+        case 'RECORDING_STARTED':
+          activeRecording = { startTime: Date.now(), tabId: sender.tab?.id };
+          console.log('[10X Browser] Recording started');
+          sendResponse({ success: true });
+          break;
 
-          // Also send to WebSocket if connected
-          if (isConnected) {
-            sendToWebSocket({
-              type: 'screenshot-captured',
-              ...screenshotResult
-            });
+        case 'RECORDING_STOPPED':
+          if (activeRecording) {
+            // Save recording to database
+            const recordingData = {
+              id: `rec_${Date.now()}`,
+              timestamp: activeRecording.startTime,
+              duration: Date.now() - activeRecording.startTime,
+              actionCount: message.actionCount || 0,
+              url: sender.tab?.url
+            };
+            await saveToStore(STORES.RECORDINGS, recordingData);
           }
+          activeRecording = null;
+          sendResponse({ success: true });
           break;
 
-        case 'TAKE_FULL_PAGE_SCREENSHOT':
-          // Capture full page screenshot
-          const fullPageResult = await captureFullPageScreenshot(message.options || {});
-          sendResponse(fullPageResult);
-
-          // Also send to WebSocket if connected
-          if (isConnected) {
-            sendToWebSocket({
-              type: 'full-page-screenshot-captured',
-              ...fullPageResult
-            });
-          }
-          break;
-
-        // ============ LOGGING HANDLERS ============
-        case 'GET_LOGS':
-          const logs = await getLogs(message.filters || {});
-          sendResponse({ success: true, logs });
-          break;
-
-        case 'EXPORT_LOGS':
-          const exportedLogs = await exportLogs(message.filters || {});
-          sendResponse({ success: true, data: exportedLogs });
-          break;
-
-        case 'CLEAR_LOGS':
-          if (db) {
-            const logTransaction = db.transaction([STORES.LOGS], 'readwrite');
-            const logStore = logTransaction.objectStore(STORES.LOGS);
-            await logStore.clear();
-            Logger.info('LOGS', 'All logs cleared by user');
+        case 'START_RECORDING':
+          // Send to active tab
+          const [recTab] = await chrome.tabs.query({ active: true, currentWindow: true });
+          if (recTab) {
+            chrome.tabs.sendMessage(recTab.id, { type: 'START_RECORDING' });
           }
           sendResponse({ success: true });
           break;
 
-        case 'SET_LOG_LEVEL':
-          if (message.level && LOG_LEVELS[message.level] !== undefined) {
-            currentLogLevel = LOG_LEVELS[message.level];
-            Logger.info('LOGS', `Log level set to ${message.level}`);
-            sendResponse({ success: true, level: message.level });
+        case 'STOP_RECORDING':
+          const [stopTab] = await chrome.tabs.query({ active: true, currentWindow: true });
+          if (stopTab) {
+            chrome.tabs.sendMessage(stopTab.id, { type: 'STOP_RECORDING' });
+          }
+          sendResponse({ success: true });
+          break;
+
+        // ========== Workflow Handlers ==========
+        case 'SAVE_WORKFLOW':
+          await saveToStore(STORES.WORKFLOWS, message.workflow);
+          lastWorkflowId = message.workflow.id;
+          sendResponse({ success: true, id: message.workflow.id });
+          break;
+
+        case 'GET_WORKFLOWS':
+          const workflows = await getAllFromStore(STORES.WORKFLOWS);
+          sendResponse({ success: true, workflows });
+          break;
+
+        case 'GET_WORKFLOW':
+          const workflow = await getFromStore(STORES.WORKFLOWS, message.id);
+          sendResponse({ success: true, workflow });
+          break;
+
+        case 'DELETE_WORKFLOW':
+          await deleteFromStore(STORES.WORKFLOWS, message.id);
+          sendResponse({ success: true });
+          break;
+
+        case 'RUN_WORKFLOW':
+          // Execute workflow in active tab
+          const [wfTab] = await chrome.tabs.query({ active: true, currentWindow: true });
+          if (wfTab) {
+            const wf = await getFromStore(STORES.WORKFLOWS, message.workflowId);
+            if (wf) {
+              chrome.tabs.sendMessage(wfTab.id, { type: 'EXECUTE_WORKFLOW', workflow: wf });
+              lastWorkflowId = message.workflowId;
+            }
+          }
+          sendResponse({ success: true });
+          break;
+
+        case 'RUN_LAST_WORKFLOW':
+          if (lastWorkflowId) {
+            const [lastTab] = await chrome.tabs.query({ active: true, currentWindow: true });
+            const lastWf = await getFromStore(STORES.WORKFLOWS, lastWorkflowId);
+            if (lastWf && lastTab) {
+              chrome.tabs.sendMessage(lastTab.id, { type: 'EXECUTE_WORKFLOW', workflow: lastWf });
+            }
+          }
+          sendResponse({ success: true, workflowId: lastWorkflowId });
+          break;
+
+        case 'GET_RECENT_WORKFLOWS':
+          const recentWfs = await getAllFromStore(STORES.WORKFLOWS);
+          const sorted = recentWfs.sort((a, b) => (b.statistics?.lastRun || 0) - (a.statistics?.lastRun || 0));
+          sendResponse({ success: true, workflows: sorted.slice(0, 5) });
+          break;
+
+        case 'WORKFLOW_ACTION':
+          // Handle workflow actions from content script
+          console.log('[10X Browser] Workflow action:', message.action);
+          sendResponse({ success: true });
+          break;
+
+        // ========== Scraping Handlers ==========
+        case 'SCRAPE_PAGE':
+          const [scrapeTab] = await chrome.tabs.query({ active: true, currentWindow: true });
+          if (scrapeTab) {
+            chrome.tabs.sendMessage(scrapeTab.id, { type: 'SCRAPE_PAGE' }, (response) => {
+              sendResponse(response || { error: 'No response from tab' });
+            });
           } else {
-            sendResponse({ success: false, error: 'Invalid log level' });
+            sendResponse({ error: 'No active tab' });
           }
           break;
 
-        // ============ DATA FETCHING HANDLERS ============
-        case 'FETCH_GOOGLE_ADS':
-          Logger.action('DATA_FETCH', 'Fetching Google Ads data', message.options);
-          const adsData = await fetchGoogleAdsData(message.options || {});
-          sendResponse(adsData);
-          break;
-
-        case 'FETCH_GOOGLE_ANALYTICS':
-          Logger.action('DATA_FETCH', 'Fetching Google Analytics data', message.options);
-          const gaData = await fetchGoogleAnalyticsData(message.options || {});
-          sendResponse(gaData);
-          break;
-
-        case 'FETCH_LINKEDIN_ANALYTICS':
-          Logger.action('DATA_FETCH', 'Fetching LinkedIn Analytics', message.options);
-          const liData = await fetchLinkedInAnalytics(message.options || {});
-          sendResponse(liData);
-          break;
-
-        case 'FETCH_PLATFORM_DATA':
-          // Generic platform data fetcher
-          Logger.action('DATA_FETCH', `Fetching ${message.platform} data`, message.options);
-          let platformData;
-          switch (message.platform) {
-            case 'google_ads':
-              platformData = await fetchGoogleAdsData(message.options || {});
-              break;
-            case 'google_analytics':
-              platformData = await fetchGoogleAnalyticsData(message.options || {});
-              break;
-            case 'linkedin':
-              platformData = await fetchLinkedInAnalytics(message.options || {});
-              break;
-            default:
-              platformData = { success: false, error: `Unknown platform: ${message.platform}` };
+        case 'EXTRACT_BY_TYPE':
+          const [extractTab] = await chrome.tabs.query({ active: true, currentWindow: true });
+          if (extractTab) {
+            chrome.tabs.sendMessage(extractTab.id, { type: 'EXTRACT_BY_TYPE', dataType: message.dataType }, (response) => {
+              sendResponse(response || { error: 'No response from tab' });
+            });
           }
-          sendResponse(platformData);
+          break;
+
+        // ========== NLP Command Handlers ==========
+        case 'EXECUTE_NLP_COMMAND':
+          const [nlpTab] = await chrome.tabs.query({ active: true, currentWindow: true });
+          if (nlpTab) {
+            chrome.tabs.sendMessage(nlpTab.id, { type: 'EXECUTE_NLP_COMMAND', parsed: message.parsed }, (response) => {
+              sendResponse(response || { error: 'No response from tab' });
+            });
+          }
+          break;
+
+        case 'PARSE_COMMAND':
+          const [parseTab] = await chrome.tabs.query({ active: true, currentWindow: true });
+          if (parseTab) {
+            chrome.tabs.sendMessage(parseTab.id, { type: 'PARSE_COMMAND', command: message.command }, (response) => {
+              sendResponse(response || { error: 'No response from tab' });
+            });
+          }
+          break;
+
+        // ========== Variables Handlers ==========
+        case 'SET_VARIABLE':
+          await saveToStore(STORES.VARIABLES, { key: message.key, value: message.value, updatedAt: Date.now() });
+          sendResponse({ success: true });
+          break;
+
+        case 'GET_VARIABLE':
+          const variable = await getFromStore(STORES.VARIABLES, message.key);
+          sendResponse({ success: true, value: variable?.value });
+          break;
+
+        case 'DELETE_VARIABLE':
+          await deleteFromStore(STORES.VARIABLES, message.key);
+          sendResponse({ success: true });
+          break;
+
+        // ========== UI Handlers ==========
+        case 'OPEN_COMMAND_PALETTE':
+          const [paletteTab] = await chrome.tabs.query({ active: true, currentWindow: true });
+          if (paletteTab) {
+            chrome.tabs.sendMessage(paletteTab.id, { type: 'OPEN_COMMAND_PALETTE' });
+          }
+          sendResponse({ success: true });
+          break;
+
+        case 'OPEN_SETTINGS':
+          chrome.runtime.openOptionsPage();
+          sendResponse({ success: true });
+          break;
+
+        case 'SHOW_HELP':
+          chrome.tabs.create({ url: 'https://10x.in/docs/extension' });
+          sendResponse({ success: true });
+          break;
+
+        case 'OPEN_WORKFLOW_BUILDER':
+          chrome.tabs.create({ url: chrome.runtime.getURL('ui/workflow-builder/builder.html') });
+          sendResponse({ success: true });
+          break;
+
+        case 'SHOW_WORKFLOWS':
+          // Could open a workflows management page
+          chrome.tabs.create({ url: chrome.runtime.getURL('ui/workflow-builder/builder.html') });
+          sendResponse({ success: true });
+          break;
+
+        // ========== Screenshot Handler ==========
+        case 'TAKE_SCREENSHOT':
+          const [ssTab] = await chrome.tabs.query({ active: true, currentWindow: true });
+          if (ssTab) {
+            const dataUrl = await chrome.tabs.captureVisibleTab(ssTab.windowId, { format: 'png' });
+            sendResponse({ success: true, dataUrl });
+          }
+          break;
+
+        // ========== Element Selection Handler ==========
+        case 'ELEMENT_SELECTED':
+          console.log('[10X Browser] Element selected:', message.info);
+          // Forward to any listeners
+          sendToWebSocket({ type: 'element-selected', info: message.info });
+          sendResponse({ success: true });
           break;
 
         default:
@@ -1591,6 +1102,56 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   return true; // Keep channel open for async response
 });
 
+// ========== Database Helper Functions ==========
+
+async function saveToStore(storeName, data) {
+  if (!db) throw new Error('Database not initialized');
+
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction([storeName], 'readwrite');
+    const store = transaction.objectStore(storeName);
+    const request = store.put(data);
+    request.onsuccess = () => resolve(data);
+    request.onerror = () => reject(request.error);
+  });
+}
+
+async function getFromStore(storeName, key) {
+  if (!db) return null;
+
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction([storeName], 'readonly');
+    const store = transaction.objectStore(storeName);
+    const request = store.get(key);
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
+  });
+}
+
+async function getAllFromStore(storeName) {
+  if (!db) return [];
+
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction([storeName], 'readonly');
+    const store = transaction.objectStore(storeName);
+    const request = store.getAll();
+    request.onsuccess = () => resolve(request.result || []);
+    request.onerror = () => reject(request.error);
+  });
+}
+
+async function deleteFromStore(storeName, key) {
+  if (!db) return;
+
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction([storeName], 'readwrite');
+    const store = transaction.objectStore(storeName);
+    const request = store.delete(key);
+    request.onsuccess = () => resolve();
+    request.onerror = () => reject(request.error);
+  });
+}
+
 // Handle extension installation
 chrome.runtime.onInstalled.addListener((details) => {
   console.log('[10X Browser] Extension installed:', details.reason);
@@ -1599,4 +1160,117 @@ chrome.runtime.onInstalled.addListener((details) => {
     // Open welcome page
     chrome.tabs.create({ url: 'popup/welcome.html' });
   }
+
+  if (details.reason === 'update') {
+    console.log('[10X Browser] Extension updated to v2.0 - GOD-LEVEL features enabled');
+  }
 });
+
+// ========== Keyboard Command Handlers ==========
+
+chrome.commands.onCommand.addListener(async (command) => {
+  console.log('[10X Browser] Command received:', command);
+
+  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+  if (!tab) return;
+
+  switch (command) {
+    case 'open-command-palette':
+      chrome.tabs.sendMessage(tab.id, { type: 'OPEN_COMMAND_PALETTE' });
+      break;
+
+    case 'start-recording':
+      chrome.tabs.sendMessage(tab.id, { type: 'START_RECORDING' });
+      break;
+
+    case 'scrape-page':
+      chrome.tabs.sendMessage(tab.id, { type: 'SCRAPE_PAGE' }, (response) => {
+        if (response?.result) {
+          // Copy to clipboard via content script
+          chrome.tabs.sendMessage(tab.id, {
+            type: 'COPY_TO_CLIPBOARD',
+            text: JSON.stringify(response.result, null, 2)
+          });
+        }
+      });
+      break;
+
+    case 'run-last-workflow':
+      if (lastWorkflowId) {
+        const workflow = await getFromStore(STORES.WORKFLOWS, lastWorkflowId);
+        if (workflow) {
+          chrome.tabs.sendMessage(tab.id, { type: 'EXECUTE_WORKFLOW', workflow });
+        }
+      }
+      break;
+  }
+});
+
+// ========== Tab Orchestration ==========
+
+class TabOrchestrator {
+  constructor() {
+    this.runningTasks = new Map();
+    this.maxConcurrent = 5;
+  }
+
+  async runParallel(tasks) {
+    const queue = [...tasks];
+    const results = [];
+
+    while (queue.length > 0 || this.runningTasks.size > 0) {
+      // Start new tasks up to limit
+      while (queue.length > 0 && this.runningTasks.size < this.maxConcurrent) {
+        const task = queue.shift();
+        const tabPromise = this.executeInNewTab(task);
+        this.runningTasks.set(task.id, tabPromise);
+      }
+
+      // Wait for any to complete
+      if (this.runningTasks.size > 0) {
+        const completed = await Promise.race([...this.runningTasks.values()]);
+        results.push(completed);
+        this.runningTasks.delete(completed.taskId);
+      }
+    }
+
+    return results;
+  }
+
+  async executeInNewTab(task) {
+    const tab = await chrome.tabs.create({ url: task.url, active: false });
+
+    // Wait for page load
+    await new Promise(resolve => {
+      const listener = (tabId, info) => {
+        if (tabId === tab.id && info.status === 'complete') {
+          chrome.tabs.onUpdated.removeListener(listener);
+          resolve();
+        }
+      };
+      chrome.tabs.onUpdated.addListener(listener);
+    });
+
+    // Execute task actions
+    let result = null;
+    try {
+      for (const action of task.actions || []) {
+        await chrome.tabs.sendMessage(tab.id, action);
+      }
+      result = { taskId: task.id, success: true };
+    } catch (error) {
+      result = { taskId: task.id, success: false, error: error.message };
+    }
+
+    // Close tab if requested
+    if (task.closeOnComplete) {
+      await chrome.tabs.remove(tab.id);
+    }
+
+    return result;
+  }
+}
+
+const tabOrchestrator = new TabOrchestrator();
+
+console.log('[10X Browser] Background service worker v2.0 initialized');

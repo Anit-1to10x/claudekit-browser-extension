@@ -1,0 +1,464 @@
+/**
+ * 10X.in Command Palette Styles
+ * Spotlight-like command interface
+ */
+
+.tenx-command-palette-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
+  z-index: 2147483646;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.2s, visibility 0.2s;
+}
+
+.tenx-command-palette-overlay.visible {
+  opacity: 1;
+  visibility: visible;
+}
+
+.tenx-command-palette {
+  position: fixed;
+  top: 15%;
+  left: 50%;
+  transform: translateX(-50%) scale(0.95);
+  width: 600px;
+  max-width: 90vw;
+  background: #ffffff;
+  border-radius: 16px;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(0, 0, 0, 0.05);
+  z-index: 2147483647;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.2s, visibility 0.2s, transform 0.2s;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  overflow: hidden;
+}
+
+.tenx-command-palette.visible {
+  opacity: 1;
+  visibility: visible;
+  transform: translateX(-50%) scale(1);
+}
+
+/* Header */
+.tenx-palette-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 20px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.tenx-palette-logo {
+  width: 32px;
+  height: 32px;
+  background: linear-gradient(135deg, #6366f1, #4f46e5);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-weight: 800;
+  font-size: 10px;
+  flex-shrink: 0;
+}
+
+.tenx-palette-input-wrapper {
+  flex: 1;
+  position: relative;
+}
+
+.tenx-palette-input {
+  width: 100%;
+  padding: 12px 16px;
+  border: none;
+  outline: none;
+  font-size: 16px;
+  background: #f9fafb;
+  border-radius: 8px;
+  color: #111827;
+}
+
+.tenx-palette-input::placeholder {
+  color: #9ca3af;
+}
+
+.tenx-palette-input:focus {
+  background: #f3f4f6;
+}
+
+.tenx-palette-shortcut {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  gap: 4px;
+}
+
+.tenx-palette-shortcut kbd {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 8px;
+  background: #e5e7eb;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 500;
+  color: #6b7280;
+  font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, monospace;
+}
+
+/* Results */
+.tenx-palette-results {
+  max-height: 400px;
+  overflow-y: auto;
+  padding: 8px;
+}
+
+.tenx-palette-results::-webkit-scrollbar {
+  width: 6px;
+}
+
+.tenx-palette-results::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.tenx-palette-results::-webkit-scrollbar-thumb {
+  background: #d1d5db;
+  border-radius: 3px;
+}
+
+/* Group */
+.tenx-palette-group {
+  margin-bottom: 8px;
+}
+
+.tenx-palette-group:last-child {
+  margin-bottom: 0;
+}
+
+.tenx-palette-group-title {
+  padding: 8px 12px 4px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #9ca3af;
+}
+
+/* Item */
+.tenx-palette-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.tenx-palette-item:hover,
+.tenx-palette-item.selected {
+  background: #f3f4f6;
+}
+
+.tenx-palette-item.selected {
+  background: #eef2ff;
+}
+
+.tenx-palette-item-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
+.tenx-palette-item-icon.action {
+  background: #dbeafe;
+}
+
+.tenx-palette-item-icon.workflow {
+  background: #dcfce7;
+}
+
+.tenx-palette-item-icon.scrape {
+  background: #fef3c7;
+}
+
+.tenx-palette-item-icon.navigate {
+  background: #f3e8ff;
+}
+
+.tenx-palette-item-icon.record {
+  background: #fee2e2;
+}
+
+.tenx-palette-item-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.tenx-palette-item-title {
+  font-size: 14px;
+  font-weight: 500;
+  color: #111827;
+  margin-bottom: 2px;
+}
+
+.tenx-palette-item-description {
+  font-size: 12px;
+  color: #6b7280;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tenx-palette-item-shortcut {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.tenx-palette-item-shortcut kbd {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+  padding: 4px 6px;
+  background: #e5e7eb;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 500;
+  color: #6b7280;
+  font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, monospace;
+}
+
+/* Footer */
+.tenx-palette-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-top: 1px solid #e5e7eb;
+  background: #f9fafb;
+}
+
+.tenx-palette-footer-hint {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.tenx-palette-footer-hint span {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.tenx-palette-footer-hint kbd {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px 6px;
+  background: #e5e7eb;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 500;
+  color: #6b7280;
+  font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, monospace;
+}
+
+.tenx-palette-footer-brand {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #9ca3af;
+}
+
+/* Empty State */
+.tenx-palette-empty {
+  padding: 32px 16px;
+  text-align: center;
+  color: #9ca3af;
+}
+
+.tenx-palette-empty-icon {
+  font-size: 32px;
+  margin-bottom: 12px;
+}
+
+.tenx-palette-empty-text {
+  font-size: 14px;
+  margin-bottom: 4px;
+}
+
+.tenx-palette-empty-hint {
+  font-size: 12px;
+  color: #d1d5db;
+}
+
+/* NLP Input Mode */
+.tenx-palette-nlp-indicator {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background: linear-gradient(135deg, #eef2ff, #faf5ff);
+  border-bottom: 1px solid #e5e7eb;
+  font-size: 12px;
+  color: #6366f1;
+}
+
+.tenx-palette-nlp-indicator::before {
+  content: '✨';
+}
+
+/* Loading State */
+.tenx-palette-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.tenx-palette-spinner {
+  width: 24px;
+  height: 24px;
+  border: 2px solid #e5e7eb;
+  border-top-color: #6366f1;
+  border-radius: 50%;
+  animation: tenx-spin 0.8s linear infinite;
+}
+
+@keyframes tenx-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Dark Mode Support */
+@media (prefers-color-scheme: dark) {
+  .tenx-command-palette-overlay {
+    background: rgba(0, 0, 0, 0.7);
+  }
+
+  .tenx-command-palette {
+    background: #1f2937;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+  }
+
+  .tenx-palette-header {
+    border-bottom-color: #374151;
+  }
+
+  .tenx-palette-input {
+    background: #374151;
+    color: #f9fafb;
+  }
+
+  .tenx-palette-input::placeholder {
+    color: #6b7280;
+  }
+
+  .tenx-palette-input:focus {
+    background: #4b5563;
+  }
+
+  .tenx-palette-shortcut kbd {
+    background: #374151;
+    color: #9ca3af;
+  }
+
+  .tenx-palette-group-title {
+    color: #6b7280;
+  }
+
+  .tenx-palette-item:hover,
+  .tenx-palette-item.selected {
+    background: #374151;
+  }
+
+  .tenx-palette-item.selected {
+    background: #312e81;
+  }
+
+  .tenx-palette-item-title {
+    color: #f9fafb;
+  }
+
+  .tenx-palette-item-description {
+    color: #9ca3af;
+  }
+
+  .tenx-palette-item-shortcut kbd {
+    background: #374151;
+    color: #9ca3af;
+  }
+
+  .tenx-palette-footer {
+    background: #111827;
+    border-top-color: #374151;
+  }
+
+  .tenx-palette-footer-hint kbd {
+    background: #374151;
+    color: #9ca3af;
+  }
+
+  .tenx-palette-nlp-indicator {
+    background: linear-gradient(135deg, #312e81, #4c1d95);
+    border-bottom-color: #374151;
+    color: #a5b4fc;
+  }
+
+  .tenx-palette-empty {
+    color: #6b7280;
+  }
+
+  .tenx-palette-empty-hint {
+    color: #4b5563;
+  }
+}
+
+/* Responsive */
+@media (max-width: 640px) {
+  .tenx-command-palette {
+    top: 10%;
+    width: 95vw;
+    max-height: 80vh;
+  }
+
+  .tenx-palette-results {
+    max-height: 50vh;
+  }
+
+  .tenx-palette-header {
+    padding: 12px 16px;
+  }
+
+  .tenx-palette-input {
+    font-size: 14px;
+    padding: 10px 12px;
+  }
+
+  .tenx-palette-item {
+    padding: 10px 12px;
+  }
+
+  .tenx-palette-footer-hint {
+    display: none;
+  }
+}

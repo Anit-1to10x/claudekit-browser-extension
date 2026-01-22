@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "10X.in Universal Browser Automation",
-  "version": "1.0.0",
-  "description": "Universal multi-platform browser automation extension with activity tracking. Developed by team 10X.in",
+  "version": "2.0.0",
+  "description": "GOD-LEVEL browser automation with NLP commands, self-healing selectors, action recording, and visual workflow builder. Developed by team 10X.in",
   "author": "team 10X.in",
 
   "icons": {
@@ -19,7 +19,8 @@
     "webNavigation",
     "webRequest",
     "scripting",
-    "downloads"
+    "clipboardWrite",
+    "notifications"
   ],
 
   "host_permissions": [
@@ -27,12 +28,23 @@
   ],
 
   "background": {
-    "service_worker": "background.js"
+    "service_worker": "background.js",
+    "type": "module"
   },
 
   "content_scripts": [{
     "matches": ["<all_urls>"],
-    "js": ["content.js"],
+    "js": [
+      "core/selectors/selector-engine.js",
+      "core/agent/intent-parser.js",
+      "core/agent/context-manager.js",
+      "core/scraper/auto-scraper.js",
+      "content/action-recorder.js",
+      "content/element-highlighter.js",
+      "ui/command-palette/command-palette.js",
+      "ui/floating-widget/widget.js",
+      "content.js"
+    ],
     "run_at": "document_idle",
     "all_frames": false
   }],
@@ -44,5 +56,44 @@
       "48": "icons/icon48.png",
       "128": "icons/icon128.png"
     }
-  }
+  },
+
+  "commands": {
+    "open-command-palette": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+K",
+        "mac": "Command+Shift+K"
+      },
+      "description": "Open Command Palette"
+    },
+    "start-recording": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+R",
+        "mac": "Command+Shift+R"
+      },
+      "description": "Start/Stop Recording"
+    },
+    "scrape-page": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+S",
+        "mac": "Command+Shift+S"
+      },
+      "description": "Scrape Current Page"
+    },
+    "run-last-workflow": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+L",
+        "mac": "Command+Shift+L"
+      },
+      "description": "Run Last Workflow"
+    }
+  },
+
+  "web_accessible_resources": [{
+    "resources": [
+      "ui/workflow-builder/builder.html",
+      "ui/command-palette/command-palette.css"
+    ],
+    "matches": ["<all_urls>"]
+  }]
 }

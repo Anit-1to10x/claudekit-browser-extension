@@ -72,7 +72,7 @@ const SELECTORS = {
 const randomDelay = (min = 1000, max = 3000) => {
   return new Promise(resolve => {
     const delay = Math.floor(Math.random() * (max - min + 1)) + min;
-    setTimeout resolve, delay);
+    setTimeout(resolve, delay);
   });
 };
 
