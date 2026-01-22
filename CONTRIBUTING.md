@@ -1,6 +1,6 @@
-# Contributing to ClaudeKit Browser Extension
+# Contributing to 10X.in Browser Extension
 
-Thank you for your interest in contributing to ClaudeKit Browser Extension! This document provides guidelines and instructions for contributing.
+Thank you for your interest in contributing to 10X.in Browser Extension! This document provides guidelines and instructions for contributing.
 
 ## Table of Contents
 
@@ -303,7 +303,7 @@ Create `handlers/yourplatform.js`:
 
 ```javascript
 /**
- * ClaudeKit YourPlatform Handler
+ * 10X.in YourPlatform Handler
  *
  * Platform-specific automation actions
  */
@@ -387,7 +387,7 @@ Add handler in `background.js`:
 
 ```javascript
 async function executeYourPlatformAction(action) {
-  console.log('[ClaudeKit Browser] YourPlatform action:', action.type);
+  console.log('[10X.in Browser] YourPlatform action:', action.type);
 
   const { default: YourPlatformHandler } = await import('./handlers/yourplatform.js');
   const handler = new YourPlatformHandler();

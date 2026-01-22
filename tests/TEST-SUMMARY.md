@@ -2,7 +2,7 @@
 
 ## Overview
 
-Complete test suite for ClaudeKit Browser Extension WebSocket integration. Tests cover connection establishment, platform-specific actions, rate limiting, and error handling.
+Complete test suite for 10XKit Browser Extension WebSocket integration. Tests cover connection establishment, platform-specific actions, rate limiting, and error handling.
 
 ## Files Created
 

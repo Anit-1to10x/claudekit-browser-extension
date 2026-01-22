@@ -1,4 +1,4 @@
-# Getting Started with ClaudeKit Browser Extension
+# Getting Started with 10X.in Browser Extension
 
 Welcome! This guide will help you get up and running in **under 10 minutes**.
 
@@ -45,7 +45,7 @@ Or [download ZIP](https://github.com/yourusername/claudekit-browser-extension/ar
 4. Select the `claudekit-browser-extension` folder
 5. Done! Extension icon appears in toolbar
 
-**Verify**: Click the ClaudeKit icon. Popup should open showing "Connecting..."
+**Verify**: Click the 10X.in icon. Popup should open showing "Connecting..."
 
 ---
 
@@ -220,7 +220,7 @@ ws.on('open', () => {
     type: 'google-action',
     payload: {
       type: 'search',
-      query: 'Claude AI assistant'
+      query: '10X AI assistant'
     }
   }));
 });

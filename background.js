@@ -1,8 +1,9 @@
 /**
- * ClaudeKit Universal Browser Controller - Background Service Worker
+ * 10X.in Universal Browser Automation - Background Service Worker
  *
- * Connects to canvas WebSocket server and executes browser automation commands
- * Replaces Browser-Use MCP with direct extension control
+ * Developed by team 10X.in
+ * Multi-platform browser automation with activity tracking and prospect management
+ * Connects to WebSocket server and executes browser automation commands
  */
 
 // Configuration
@@ -23,29 +24,236 @@ let isConnected = false;
 let pendingCommands = [];
 
 // Database stores (IndexedDB)
-const DB_NAME = 'ClaudeKitBrowser';
+const DB_NAME = '10XBrowser';
 const DB_VERSION = 1;
 const STORES = {
   ACTIVITIES: 'activities',
   COMMANDS: 'commands',
   RESULTS: 'results',
-  SETTINGS: 'settings'
+  SETTINGS: 'settings',
+  PROSPECTS: 'prospects'
 };
 
+let db = null;
+
+// Initialize IndexedDB
+function initDatabase() {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open(DB_NAME, DB_VERSION);
+
+    request.onerror = () => {
+      console.error('[10X Browser] Database error:', request.error);
+      reject(request.error);
+    };
+
+    request.onsuccess = () => {
+      db = request.result;
+      console.log('[10X Browser] Database initialized');
+      resolve(db);
+    };
+
+    request.onupgradeneeded = (event) => {
+      const db = event.target.result;
+      console.log('[10X Browser] Database upgrade needed');
+
+      // Activities store
+      if (!db.objectStoreNames.contains(STORES.ACTIVITIES)) {
+        const activitiesStore = db.createObjectStore(STORES.ACTIVITIES, {
+          keyPath: 'id',
+          autoIncrement: true
+        });
+        activitiesStore.createIndex('timestamp', 'timestamp', { unique: false });
+        activitiesStore.createIndex('platform', 'platform', { unique: false });
+        activitiesStore.createIndex('type', 'type', { unique: false });
+        activitiesStore.createIndex('url', 'url', { unique: false });
+        activitiesStore.createIndex('date', 'date', { unique: false });
+      }
+
+      // Prospects store
+      if (!db.objectStoreNames.contains(STORES.PROSPECTS)) {
+        const prospectsStore = db.createObjectStore(STORES.PROSPECTS, {
+          keyPath: 'linkedin_url'
+        });
+        prospectsStore.createIndex('email', 'email', { unique: false });
+        prospectsStore.createIndex('name', 'name', { unique: false });
+        prospectsStore.createIndex('company', 'company', { unique: false });
+      }
+
+      // Commands store
+      if (!db.objectStoreNames.contains(STORES.COMMANDS)) {
+        db.createObjectStore(STORES.COMMANDS, {
+          keyPath: 'id',
+          autoIncrement: true
+        });
+      }
+
+      // Results store
+      if (!db.objectStoreNames.contains(STORES.RESULTS)) {
+        db.createObjectStore(STORES.RESULTS, {
+          keyPath: 'commandId'
+        });
+      }
+
+      // Settings store
+      if (!db.objectStoreNames.contains(STORES.SETTINGS)) {
+        db.createObjectStore(STORES.SETTINGS, { keyPath: 'key' });
+      }
+    };
+  });
+}
+
+// Database Helper Functions
+function normalizeLinkedInUrl(url) {
+  try {
+    const urlObj = new URL(url);
+    const pathParts = urlObj.pathname.split('/').filter(p => p);
+
+    // Extract username from paths like /in/username/ or /in/username
+    if (pathParts[0] === 'in' && pathParts[1]) {
+      const username = pathParts[1];
+      return `https://www.linkedin.com/in/${username}`;
+    }
+
+    return url;
+  } catch (error) {
+    return url;
+  }
+}
+
+function saveActivity(activity) {
+  if (!db) {
+    console.warn('[10X Browser] Database not initialized');
+    return Promise.reject(new Error('Database not initialized'));
+  }
+
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction([STORES.ACTIVITIES], 'readwrite');
+    const store = transaction.objectStore(STORES.ACTIVITIES);
+
+    // Add date field for easy querying
+    activity.date = new Date(activity.timestamp).toISOString().split('T')[0];
+
+    const request = store.add(activity);
+
+    request.onsuccess = () => {
+      console.log('[10X Browser] Activity saved:', activity.type);
+      resolve(request.result);
+    };
+
+    request.onerror = () => {
+      console.error('[10X Browser] Failed to save activity:', request.error);
+      reject(request.error);
+    };
+  });
+}
+
+function getActivities(filters = {}) {
+  if (!db) return Promise.reject(new Error('Database not initialized'));
+
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction([STORES.ACTIVITIES], 'readonly');
+    const store = transaction.objectStore(STORES.ACTIVITIES);
+    const request = store.getAll();
+
+    request.onsuccess = () => {
+      let activities = request.result;
+
+      // Apply filters
+      if (filters.platform) {
+        activities = activities.filter(a => a.platform === filters.platform);
+      }
+      if (filters.type) {
+        activities = activities.filter(a => a.type === filters.type);
+      }
+      if (filters.date) {
+        activities = activities.filter(a => a.date === filters.date);
+      }
+      if (filters.isProspect !== undefined) {
+        activities = activities.filter(a => a.isProspect === filters.isProspect);
+      }
+
+      // Sort by timestamp descending
+      activities.sort((a, b) => b.timestamp - a.timestamp);
+
+      resolve(activities);
+    };
+
+    request.onerror = () => reject(request.error);
+  });
+}
+
+async function checkProspect(linkedinUrl) {
+  if (!db) return null;
+
+  const normalizedUrl = normalizeLinkedInUrl(linkedinUrl);
+
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction([STORES.PROSPECTS], 'readonly');
+    const store = transaction.objectStore(STORES.PROSPECTS);
+    const request = store.get(normalizedUrl);
+
+    request.onsuccess = () => resolve(request.result || null);
+    request.onerror = () => reject(request.error);
+  });
+}
+
+function saveProspect(prospect) {
+  if (!db) return Promise.reject(new Error('Database not initialized'));
+
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction([STORES.PROSPECTS], 'readwrite');
+    const store = transaction.objectStore(STORES.PROSPECTS);
+
+    // Normalize URL
+    if (prospect.linkedin_url) {
+      prospect.linkedin_url = normalizeLinkedInUrl(prospect.linkedin_url);
+    }
+
+    const request = store.put(prospect);
+
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
+  });
+}
+
+function getAllProspects() {
+  if (!db) return Promise.reject(new Error('Database not initialized'));
+
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction([STORES.PROSPECTS], 'readonly');
+    const store = transaction.objectStore(STORES.PROSPECTS);
+    const request = store.getAll();
+
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
+  });
+}
+
 // Initialize extension
-console.log('[ClaudeKit Browser] Extension loaded');
-connectToWebSocket();
+console.log('[10X Browser] Extension loaded');
+
+// Initialize database first, then connect
+initDatabase()
+  .then(() => {
+    console.log('[10X Browser] Database ready');
+    connectToWebSocket();
+  })
+  .catch((error) => {
+    console.error('[10X Browser] Failed to initialize database:', error);
+    // Still try to connect even if database fails
+    connectToWebSocket();
+  });
 
 /**
  * Connect to Canvas WebSocket Server
  */
 function connectToWebSocket() {
   if (ws && (ws.readyState === WebSocket.CONNECTING || ws.readyState === WebSocket.OPEN)) {
-    console.log('[ClaudeKit Browser] Already connected or connecting');
+    console.log('[10X Browser] Already connected or connecting');
     return;
   }
 
-  console.log(`[ClaudeKit Browser] Connecting to ${CONFIG.WEBSOCKET_URL}...`);
+  console.log(`[10X Browser] Connecting to ${CONFIG.WEBSOCKET_URL}...`);
 
   try {
     ws = new WebSocket(CONFIG.WEBSOCKET_URL);
@@ -56,7 +264,7 @@ function connectToWebSocket() {
     ws.onclose = handleWebSocketClose;
 
   } catch (error) {
-    console.error('[ClaudeKit Browser] WebSocket connection error:', error);
+    console.error('[10X Browser] WebSocket connection error:', error);
     scheduleReconnect();
   }
 }
@@ -65,7 +273,7 @@ function connectToWebSocket() {
  * Handle WebSocket open
  */
 function handleWebSocketOpen() {
-  console.log('[ClaudeKit Browser] ✅ Connected to Canvas WebSocket');
+  console.log('[10X Browser] ✅ Connected to Canvas WebSocket');
   isConnected = true;
   reconnectAttempts = 0;
 
@@ -111,7 +319,7 @@ function handleWebSocketOpen() {
 async function handleWebSocketMessage(event) {
   try {
     const message = JSON.parse(event.data);
-    console.log('[ClaudeKit Browser] Received command:', message.type);
+    console.log('[10X Browser] Received command:', message.type);
 
     switch (message.type) {
       case 'browser-command':
@@ -139,11 +347,11 @@ async function handleWebSocketMessage(event) {
         break;
 
       default:
-        console.warn('[ClaudeKit Browser] Unknown message type:', message.type);
+        console.warn('[10X Browser] Unknown message type:', message.type);
     }
 
   } catch (error) {
-    console.error('[ClaudeKit Browser] Error handling message:', error);
+    console.error('[10X Browser] Error handling message:', error);
     sendToWebSocket({
       type: 'error',
       error: error.message,
@@ -156,7 +364,7 @@ async function handleWebSocketMessage(event) {
  * Handle WebSocket error
  */
 function handleWebSocketError(error) {
-  console.error('[ClaudeKit Browser] WebSocket error:', error);
+  console.error('[10X Browser] WebSocket error:', error);
   isConnected = false;
 
   chrome.action.setBadgeText({ text: '!' });
@@ -167,7 +375,7 @@ function handleWebSocketError(error) {
  * Handle WebSocket close
  */
 function handleWebSocketClose(event) {
-  console.log('[ClaudeKit Browser] WebSocket closed:', event.code, event.reason);
+  console.log('[10X Browser] WebSocket closed:', event.code, event.reason);
   isConnected = false;
 
   stopHeartbeat();
@@ -184,14 +392,14 @@ function handleWebSocketClose(event) {
  */
 function scheduleReconnect() {
   if (reconnectAttempts >= CONFIG.MAX_RECONNECT_ATTEMPTS) {
-    console.error('[ClaudeKit Browser] Max reconnect attempts reached');
+    console.error('[10X Browser] Max reconnect attempts reached');
     return;
   }
 
   const delay = CONFIG.RECONNECT_DELAY * Math.pow(2, reconnectAttempts); // Exponential backoff
   reconnectAttempts++;
 
-  console.log(`[ClaudeKit Browser] Reconnecting in ${delay}ms (attempt ${reconnectAttempts}/${CONFIG.MAX_RECONNECT_ATTEMPTS})`);
+  console.log(`[10X Browser] Reconnecting in ${delay}ms (attempt ${reconnectAttempts}/${CONFIG.MAX_RECONNECT_ATTEMPTS})`);
 
   reconnectTimeout = setTimeout(() => {
     connectToWebSocket();
@@ -226,7 +434,7 @@ function stopHeartbeat() {
  */
 function sendToWebSocket(message) {
   if (!ws || ws.readyState !== WebSocket.OPEN) {
-    console.warn('[ClaudeKit Browser] WebSocket not connected, queueing command');
+    console.warn('[10X Browser] WebSocket not connected, queueing command');
     pendingCommands.push(message);
     return false;
   }
@@ -235,7 +443,7 @@ function sendToWebSocket(message) {
     ws.send(JSON.stringify(message));
     return true;
   } catch (error) {
-    console.error('[ClaudeKit Browser] Error sending message:', error);
+    console.error('[10X Browser] Error sending message:', error);
     pendingCommands.push(message);
     return false;
   }
@@ -247,7 +455,7 @@ function sendToWebSocket(message) {
 function processPendingCommands() {
   if (pendingCommands.length === 0) return;
 
-  console.log(`[ClaudeKit Browser] Processing ${pendingCommands.length} pending commands`);
+  console.log(`[10X Browser] Processing ${pendingCommands.length} pending commands`);
 
   const commands = [...pendingCommands];
   pendingCommands = [];
@@ -261,7 +469,7 @@ function processPendingCommands() {
  * Execute browser command
  */
 async function executeBrowserCommand(command) {
-  console.log('[ClaudeKit Browser] Executing command:', command.action);
+  console.log('[10X Browser] Executing command:', command.action);
 
   try {
     let result;
@@ -300,7 +508,7 @@ async function executeBrowserCommand(command) {
     });
 
   } catch (error) {
-    console.error('[ClaudeKit Browser] Command failed:', error);
+    console.error('[10X Browser] Command failed:', error);
 
     sendToWebSocket({
       type: 'command-result',
@@ -460,7 +668,7 @@ async function executeScript(script, args = []) {
  * Execute LinkedIn action
  */
 async function executeLinkedInAction(action) {
-  console.log('[ClaudeKit Browser] LinkedIn action:', action.type);
+  console.log('[10X Browser] LinkedIn action:', action.type);
 
   // Import LinkedIn handler
   const { default: LinkedInHandler } = await import('./handlers/linkedin.js');
@@ -481,7 +689,7 @@ async function executeLinkedInAction(action) {
  * Execute Instagram action
  */
 async function executeInstagramAction(action) {
-  console.log('[ClaudeKit Browser] Instagram action:', action.type);
+  console.log('[10X Browser] Instagram action:', action.type);
 
   const { default: InstagramHandler } = await import('./handlers/instagram.js');
   const handler = new InstagramHandler();
@@ -501,7 +709,7 @@ async function executeInstagramAction(action) {
  * Execute Twitter action
  */
 async function executeTwitterAction(action) {
-  console.log('[ClaudeKit Browser] Twitter action:', action.type);
+  console.log('[10X Browser] Twitter action:', action.type);
 
   const { default: TwitterHandler } = await import('./handlers/twitter.js');
   const handler = new TwitterHandler();
@@ -521,7 +729,7 @@ async function executeTwitterAction(action) {
  * Execute Google action
  */
 async function executeGoogleAction(action) {
-  console.log('[ClaudeKit Browser] Google action:', action.type);
+  console.log('[10X Browser] Google action:', action.type);
 
   const { default: GoogleHandler } = await import('./handlers/google.js');
   const handler = new GoogleHandler();
@@ -539,44 +747,117 @@ async function executeGoogleAction(action) {
 
 // Listen for messages from content scripts
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  console.log('[ClaudeKit Browser] Message from content script:', message.type);
+  console.log('[10X Browser] Message from content script:', message.type);
 
-  switch (message.type) {
-    case 'ACTIVITY_TRACKED':
-      // Forward activity to WebSocket
-      sendToWebSocket({
-        type: 'activity-tracked',
-        platform: message.platform,
-        activity: message.activity
-      });
-      sendResponse({ success: true });
-      break;
+  (async () => {
+    try {
+      switch (message.type) {
+        case 'ACTIVITY_TRACKED':
+          // Save activities to database
+          if (Array.isArray(message.activity)) {
+            // Multiple activities
+            for (const activity of message.activity) {
+              // Check if it's a prospect
+              if (activity.platform === 'linkedin' && activity.url) {
+                const prospect = await checkProspect(activity.url);
+                if (prospect) {
+                  activity.isProspect = true;
+                  activity.prospectData = prospect;
+                }
+              }
+              await saveActivity(activity);
+            }
+          } else {
+            // Single activity
+            const activity = message.activity;
+            if (activity.platform === 'linkedin' && activity.url) {
+              const prospect = await checkProspect(activity.url);
+              if (prospect) {
+                activity.isProspect = true;
+                activity.prospectData = prospect;
+              }
+            }
+            await saveActivity(activity);
+          }
 
-    case 'GET_CONNECTION_STATUS':
-      sendResponse({ connected: isConnected });
-      break;
+          // Forward activity to WebSocket
+          sendToWebSocket({
+            type: 'activity-tracked',
+            platform: message.platform,
+            activity: message.activity
+          });
 
-    case 'RECONNECT':
-      // Manual reconnect from popup
-      console.log('[ClaudeKit Browser] Manual reconnect requested');
-      if (ws) {
-        ws.close();
+          sendResponse({ success: true });
+          break;
+
+        case 'GET_CONNECTION_STATUS':
+          sendResponse({ connected: isConnected });
+          break;
+
+        case 'GET_ACTIVITIES':
+          const activities = await getActivities(message.filters);
+          sendResponse({ success: true, activities });
+          break;
+
+        case 'CHECK_PROSPECT':
+          const prospect = await checkProspect(message.url);
+          sendResponse({ success: true, prospect, isProspect: !!prospect });
+          break;
+
+        case 'SAVE_PROSPECT':
+          await saveProspect(message.prospect);
+          sendResponse({ success: true });
+          break;
+
+        case 'GET_ALL_PROSPECTS':
+          const prospects = await getAllProspects();
+          sendResponse({ success: true, prospects });
+          break;
+
+        case 'CLEAR_ACTIVITIES':
+          if (db) {
+            const transaction = db.transaction([STORES.ACTIVITIES], 'readwrite');
+            const store = transaction.objectStore(STORES.ACTIVITIES);
+            await store.clear();
+          }
+          sendResponse({ success: true });
+          break;
+
+        case 'CLEAR_PROSPECTS':
+          if (db) {
+            const transaction = db.transaction([STORES.PROSPECTS], 'readwrite');
+            const store = transaction.objectStore(STORES.PROSPECTS);
+            await store.clear();
+          }
+          sendResponse({ success: true });
+          break;
+
+        case 'RECONNECT':
+          // Manual reconnect from popup
+          console.log('[10X Browser] Manual reconnect requested');
+          if (ws) {
+            ws.close();
+          }
+          reconnectAttempts = 0;
+          connectToWebSocket();
+          sendResponse({ success: true });
+          break;
+
+        default:
+          sendResponse({ error: 'Unknown message type' });
       }
-      reconnectAttempts = 0;
-      connectToWebSocket();
-      sendResponse({ success: true });
-      break;
-
-    default:
-      sendResponse({ error: 'Unknown message type' });
-  }
+    } catch (error) {
+      console.error('[10X Browser] Message handler error:', error);
+      sendResponse({ success: false, error: error.message });
+    }
+  })();
 
   return true; // Keep channel open for async response
 });
 
 // Handle extension installation
 chrome.runtime.onInstalled.addListener((details) => {
-  console.log('[ClaudeKit Browser] Extension installed:', details.reason);
+  console.log('[10X Browser] Extension installed:', details.reason);
 
   if (details.reason === 'install') {
     // Open welcome page

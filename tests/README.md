@@ -1,6 +1,6 @@
 # Browser Extension Test Suite
 
-Comprehensive test suite for ClaudeKit Browser Extension WebSocket integration.
+Comprehensive test suite for 10XKit Browser Extension WebSocket integration.
 
 ## Overview
 

@@ -1,7 +1,7 @@
 {
-  "name": "browser-extension-tests",
+  "name": "10x-browser-automation-tests",
   "version": "1.0.0",
-  "description": "Test suite for ClaudeKit Browser Extension WebSocket integration",
+  "description": "Test suite for 10X.in Browser Automation Extension WebSocket integration",
   "scripts": {
     "test": "node run-all-tests.js",
     "test:connection": "node test-connection.js",
@@ -17,8 +17,9 @@
     "testing",
     "websocket",
     "browser-extension",
-    "automation"
+    "automation",
+    "10x.in"
   ],
-  "author": "ClaudeKit",
+  "author": "team 10X.in",
   "license": "MIT"
 }

@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "WebFetch(domain:api.github.com)",
+      "Bash(python:*)",
+      "Bash(ls:*)",
+      "Bash(for file in CONTRIBUTING.md GETTING-STARTED.md INSTALL.md QUICK-START.md)",
+      "Bash(do sed -i 's/ClaudeKit/10X.in/g' \"$file\")",
+      "Bash(done)",
+      "Bash(find:*)",
+      "Bash(git add:*)"
+    ]
+  }
+}

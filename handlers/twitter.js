@@ -1,6 +1,7 @@
 /**
- * Twitter/X Automation Handler
+ * 10X.in Twitter/X Automation Handler
  *
+ * Developed by team 10X.in
  * Handles all Twitter/X platform automation actions with rate limiting,
  * media support, and comprehensive error handling.
  *

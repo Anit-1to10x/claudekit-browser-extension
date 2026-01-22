@@ -1,6 +1,7 @@
 /**
- * ClaudeKit LinkedIn Handler
+ * 10X.in LinkedIn Handler
  *
+ * Developed by team 10X.in
  * LinkedIn-specific automation actions with rate limiting and error handling
  * Actions: view_profile, send_connection, send_message, like_post, comment, send_inmail
  */

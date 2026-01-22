@@ -1,6 +1,6 @@
 # Browser Extension Handlers
 
-Platform-specific automation handlers for the ClaudeKit Universal Browser Controller.
+Platform-specific automation handlers for the 10XKit Universal Browser Controller.
 
 ## Available Handlers
 

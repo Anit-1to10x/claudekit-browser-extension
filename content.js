@@ -1,9 +1,10 @@
 /**
- * ClaudeKit Universal Browser Controller - Content Script
+ * 10X.in Universal Browser Automation - Content Script
  *
+ * Developed by team 10X.in
  * Injected into all websites to provide:
- * - Universal DOM manipulation
- * - Activity tracking (views, clicks, form submissions)
+ * - Universal DOM manipulation across all platforms
+ * - Multi-platform activity tracking (LinkedIn, Instagram, Twitter, Google)
  * - Platform detection and data extraction
  * - Command execution from background worker
  */
@@ -41,7 +42,7 @@ function detectPlatform() {
 }
 
 const currentPlatform = detectPlatform();
-console.log(`[ClaudeKit Content] Loaded on ${currentPlatform} platform`);
+console.log(`[10X Content] Loaded on ${currentPlatform} platform`);
 
 // ============================================================================
 // PLATFORM-SPECIFIC SELECTORS
@@ -122,7 +123,7 @@ function trackActivity(type, data = {}) {
   };
 
   activityBuffer.push(activity);
-  console.log(`[ClaudeKit Content] Activity tracked: ${type}`, data);
+  console.log(`[10X Content] Activity tracked: ${type}`, data);
 
   // Flush buffer if full
   if (activityBuffer.length >= ACTIVITY_BUFFER_SIZE) {
@@ -144,7 +145,7 @@ function flushActivityBuffer() {
     platform: currentPlatform,
     activity: activities
   }).catch(error => {
-    console.error('[ClaudeKit Content] Failed to send activities:', error);
+    console.error('[10X Content] Failed to send activities:', error);
   });
 }
 
@@ -277,7 +278,7 @@ function extractData(selectors) {
         data[key] = Array.from(elements).map(el => extractElementData(el));
       }
     } catch (error) {
-      console.error(`[ClaudeKit Content] Error extracting ${key}:`, error);
+      console.error(`[10X Content] Error extracting ${key}:`, error);
       data[key] = null;
     }
   }
@@ -431,7 +432,7 @@ async function clickElement(selector, options = {}) {
 
     return { success: true, selector };
   } catch (error) {
-    console.error(`[ClaudeKit Content] Click failed:`, error);
+    console.error(`[10X Content] Click failed:`, error);
     throw error;
   }
 }
@@ -495,7 +496,7 @@ async function typeText(selector, text, options = {}) {
 
     return { success: true, selector, text };
   } catch (error) {
-    console.error(`[ClaudeKit Content] Type failed:`, error);
+    console.error(`[10X Content] Type failed:`, error);
     throw error;
   }
 }
@@ -505,7 +506,7 @@ async function typeText(selector, text, options = {}) {
 // ============================================================================
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  console.log(`[ClaudeKit Content] Received command:`, message.type);
+  console.log(`[10X Content] Received command:`, message.type);
 
   (async () => {
     try {
@@ -559,7 +560,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
       sendResponse({ success: true, result });
     } catch (error) {
-      console.error(`[ClaudeKit Content] Command failed:`, error);
+      console.error(`[10X Content] Command failed:`, error);
       sendResponse({ success: false, error: error.message });
     }
   })();
@@ -571,15 +572,15 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 // INITIALIZATION
 // ============================================================================
 
-console.log('[ClaudeKit Content] Content script initialized');
+console.log('[10X Content] Content script initialized');
 
 // Check connection to background worker
 chrome.runtime.sendMessage({ type: 'GET_CONNECTION_STATUS' })
   .then(response => {
-    console.log('[ClaudeKit Content] Background worker connection:', response.connected ? '✓' : '✗');
+    console.log('[10X Content] Background worker connection:', response.connected ? '✓' : '✗');
   })
   .catch(error => {
-    console.error('[ClaudeKit Content] Failed to connect to background worker:', error);
+    console.error('[10X Content] Failed to connect to background worker:', error);
   });
 
 // Export utilities for testing

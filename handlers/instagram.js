@@ -1,6 +1,7 @@
 /**
- * Instagram Automation Handler
+ * 10X.in Instagram Automation Handler
  *
+ * Developed by team 10X.in
  * Handles Instagram automation actions with rate limiting and error handling.
  * Supports: like_post, comment, follow, send_dm, view_story
  *

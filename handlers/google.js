@@ -1,6 +1,7 @@
 /**
- * ClaudeKit Google Handler
+ * 10X.in Google Handler
  *
+ * Developed by team 10X.in
  * Google Search automation actions with SERP extraction and knowledge panel parsing
  * Actions: search, scrape_results, click_result, extract_knowledge_panel
  */

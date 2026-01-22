@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ClaudeKit Browser Controller</title>
+  <title>10X.in Browser Automation</title>
   <link rel="stylesheet" href="popup.css">
 </head>
 <body>
@@ -15,7 +15,7 @@
           <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/>
           <path d="M8 12L11 15L16 9" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
         </svg>
-        <h1>ClaudeKit</h1>
+        <h1>10X.in</h1>
       </div>
       <div class="version">v1.0.0</div>
     </header>
@@ -49,106 +49,223 @@
       </div>
     </section>
 
-    <!-- Activity Stats -->
-    <section class="stats-section">
-      <h2>Today's Activity</h2>
-      <div class="stats-grid">
-        <div class="stat-card">
-          <div class="stat-icon linkedin">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M19 3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14m-.5 15.5v-5.3a3.26 3.26 0 0 0-3.26-3.26c-.85 0-1.84.52-2.32 1.3v-1.11h-2.79v8.37h2.79v-4.93c0-.77.62-1.4 1.39-1.4a1.4 1.4 0 0 1 1.4 1.4v4.93h2.79M6.88 8.56a1.68 1.68 0 0 0 1.68-1.68c0-.93-.75-1.69-1.68-1.69a1.69 1.69 0 0 0-1.69 1.69c0 .93.76 1.68 1.69 1.68m1.39 9.94v-8.37H5.5v8.37h2.77z"/>
+    <!-- Tab Navigation -->
+    <nav class="tabs">
+      <button class="tab active" data-tab="dashboard">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+          <rect x="3" y="3" width="7" height="7" stroke="currentColor" stroke-width="2"/>
+          <rect x="14" y="3" width="7" height="7" stroke="currentColor" stroke-width="2"/>
+          <rect x="3" y="14" width="7" height="7" stroke="currentColor" stroke-width="2"/>
+          <rect x="14" y="14" width="7" height="7" stroke="currentColor" stroke-width="2"/>
+        </svg>
+        Dashboard
+      </button>
+      <button class="tab" data-tab="activity">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+          <path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" stroke="currentColor" stroke-width="2"/>
+        </svg>
+        Activity
+      </button>
+      <button class="tab" data-tab="prospects">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+          <path d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" stroke="currentColor" stroke-width="2"/>
+        </svg>
+        Prospects
+      </button>
+    </nav>
+
+    <!-- Dashboard Tab Content -->
+    <div class="tab-content active" data-content="dashboard">
+      <!-- Activity Stats -->
+      <section class="stats-section">
+        <h2>Today's Activity</h2>
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-icon linkedin">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M19 3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14m-.5 15.5v-5.3a3.26 3.26 0 0 0-3.26-3.26c-.85 0-1.84.52-2.32 1.3v-1.11h-2.79v8.37h2.79v-4.93c0-.77.62-1.4 1.39-1.4a1.4 1.4 0 0 1 1.4 1.4v4.93h2.79M6.88 8.56a1.68 1.68 0 0 0 1.68-1.68c0-.93-.75-1.69-1.68-1.69a1.69 1.69 0 0 0-1.69 1.69c0 .93.76 1.68 1.69 1.68m1.39 9.94v-8.37H5.5v8.37h2.77z"/>
+              </svg>
+            </div>
+            <div class="stat-content">
+              <div class="stat-label">LinkedIn</div>
+              <div class="stat-value" id="linkedin-count">0</div>
+            </div>
+          </div>
+
+          <div class="stat-card">
+            <div class="stat-icon instagram">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M7.8 2h8.4C19.4 2 22 4.6 22 7.8v8.4a5.8 5.8 0 0 1-5.8 5.8H7.8C4.6 22 2 19.4 2 16.2V7.8A5.8 5.8 0 0 1 7.8 2m-.2 2A3.6 3.6 0 0 0 4 7.6v8.8C4 18.39 5.61 20 7.6 20h8.8a3.6 3.6 0 0 0 3.6-3.6V7.6C20 5.61 18.39 4 16.4 4H7.6m9.65 1.5a1.25 1.25 0 0 1 1.25 1.25A1.25 1.25 0 0 1 17.25 8 1.25 1.25 0 0 1 16 6.75a1.25 1.25 0 0 1 1.25-1.25M12 7a5 5 0 0 1 5 5 5 5 0 0 1-5 5 5 5 0 0 1-5-5 5 5 0 0 1 5-5m0 2a3 3 0 0 0-3 3 3 3 0 0 0 3 3 3 3 0 0 0 3-3 3 3 0 0 0-3-3z"/>
+              </svg>
+            </div>
+            <div class="stat-content">
+              <div class="stat-label">Instagram</div>
+              <div class="stat-value" id="instagram-count">0</div>
+            </div>
+          </div>
+
+          <div class="stat-card">
+            <div class="stat-icon twitter">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+              </svg>
+            </div>
+            <div class="stat-content">
+              <div class="stat-label">Twitter</div>
+              <div class="stat-value" id="twitter-count">0</div>
+            </div>
+          </div>
+
+          <div class="stat-card">
+            <div class="stat-icon google">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M21.35 11.1h-9.17v2.73h6.51c-.33 3.81-3.5 5.44-6.5 5.44C8.36 19.27 5 16.25 5 12c0-4.1 3.2-7.27 7.2-7.27 3.09 0 4.9 1.97 4.9 1.97L19 4.72S16.56 2 12.1 2C6.42 2 2.03 6.8 2.03 12c0 5.05 4.13 10 10.22 10 5.35 0 9.25-3.67 9.25-9.09 0-1.15-.15-1.81-.15-1.81z"/>
+              </svg>
+            </div>
+            <div class="stat-content">
+              <div class="stat-label">Google</div>
+              <div class="stat-value" id="google-count">0</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Rate Limits -->
+      <section class="limits-section">
+        <h2>Rate Limits</h2>
+        <div class="limits-list" id="rate-limits">
+          <!-- LinkedIn Limits -->
+          <div class="limit-item">
+            <div class="limit-header">
+              <span class="limit-platform">LinkedIn Connections</span>
+              <span class="limit-count" data-limit="linkedin_connections">0/15</span>
+            </div>
+            <div class="limit-bar">
+              <div class="limit-progress" data-progress="linkedin_connections" style="width: 0%"></div>
+            </div>
+          </div>
+
+          <div class="limit-item">
+            <div class="limit-header">
+              <span class="limit-platform">LinkedIn Messages</span>
+              <span class="limit-count" data-limit="linkedin_messages">0/40</span>
+            </div>
+            <div class="limit-bar">
+              <div class="limit-progress" data-progress="linkedin_messages" style="width: 0%"></div>
+            </div>
+          </div>
+
+          <div class="limit-item">
+            <div class="limit-header">
+              <span class="limit-platform">LinkedIn Profile Views</span>
+              <span class="limit-count" data-limit="linkedin_profile_views">0/100</span>
+            </div>
+            <div class="limit-bar">
+              <div class="limit-progress" data-progress="linkedin_profile_views" style="width: 0%"></div>
+            </div>
+          </div>
+
+          <div class="limit-item">
+            <div class="limit-header">
+              <span class="limit-platform">LinkedIn Likes</span>
+              <span class="limit-count" data-limit="linkedin_likes">0/50</span>
+            </div>
+            <div class="limit-bar">
+              <div class="limit-progress" data-progress="linkedin_likes" style="width: 0%"></div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <!-- Activity Tab Content -->
+    <div class="tab-content" data-content="activity">
+      <section class="activity-section">
+        <div class="activity-header">
+          <h2>Activity Log</h2>
+          <div class="activity-actions">
+            <button id="export-activities-btn" class="icon-btn" title="Export CSV">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5m0 0L7 8m5-5v12" stroke="currentColor" stroke-width="2"/>
+              </svg>
+            </button>
+            <button id="clear-activities-btn" class="icon-btn" title="Clear All">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                <path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m3 0v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6h14z" stroke="currentColor" stroke-width="2"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <div class="activity-filters">
+          <select id="activity-type-filter" class="filter-select">
+            <option value="">All Types</option>
+            <option value="LINKEDIN_PROFILE_VIEW">Profile Views</option>
+            <option value="LINKEDIN_CONNECTION_REQUEST">Connections</option>
+            <option value="LINKEDIN_MESSAGE_SENT">Messages</option>
+          </select>
+          <label class="filter-checkbox">
+            <input type="checkbox" id="prospects-only-filter">
+            <span>Prospects Only</span>
+          </label>
+        </div>
+
+        <div class="activity-list" id="activity-list">
+          <!-- Activities will be loaded here -->
+        </div>
+
+        <button id="load-more-activities" class="secondary-btn" style="width: 100%; margin-top: 12px;">
+          Load More
+        </button>
+      </section>
+    </div>
+
+    <!-- Prospects Tab Content -->
+    <div class="tab-content" data-content="prospects">
+      <section class="prospects-section">
+        <div class="prospects-header">
+          <h2>Prospect Management</h2>
+          <div class="prospects-actions">
+            <button id="export-prospects-btn" class="icon-btn" title="Export CSV">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5m0 0L7 8m5-5v12" stroke="currentColor" stroke-width="2"/>
+              </svg>
+            </button>
+            <button id="clear-prospects-btn" class="icon-btn" title="Clear All">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                <path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m3 0v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6h14z" stroke="currentColor" stroke-width="2"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <div class="csv-import">
+          <label for="csv-file-input" class="csv-label">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+              <path d="M7 18a4.6 4.4 0 01 0-9 5 4.5 0 0111 2h1a3.5 3.5 0 010 7h-1M9 15l3-3m0 0l3 3m-3-3v12" stroke="currentColor" stroke-width="2"/>
             </svg>
+            <span>Import Prospects from CSV</span>
+            <input type="file" id="csv-file-input" accept=".csv" style="display: none;">
+          </label>
+          <p class="csv-help">Required column: <strong>linkedin_url</strong>. Optional: name, email, company, etc.</p>
+        </div>
+
+        <div class="prospects-stats">
+          <div class="prospect-stat">
+            <span class="prospect-stat-label">Total Prospects:</span>
+            <span class="prospect-stat-value" id="total-prospects">0</span>
           </div>
-          <div class="stat-content">
-            <div class="stat-label">LinkedIn</div>
-            <div class="stat-value" id="linkedin-count">0</div>
+          <div class="prospect-stat">
+            <span class="prospect-stat-label">Interactions:</span>
+            <span class="prospect-stat-value" id="prospect-interactions">0</span>
           </div>
         </div>
 
-        <div class="stat-card">
-          <div class="stat-icon instagram">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M7.8 2h8.4C19.4 2 22 4.6 22 7.8v8.4a5.8 5.8 0 0 1-5.8 5.8H7.8C4.6 22 2 19.4 2 16.2V7.8A5.8 5.8 0 0 1 7.8 2m-.2 2A3.6 3.6 0 0 0 4 7.6v8.8C4 18.39 5.61 20 7.6 20h8.8a3.6 3.6 0 0 0 3.6-3.6V7.6C20 5.61 18.39 4 16.4 4H7.6m9.65 1.5a1.25 1.25 0 0 1 1.25 1.25A1.25 1.25 0 0 1 17.25 8 1.25 1.25 0 0 1 16 6.75a1.25 1.25 0 0 1 1.25-1.25M12 7a5 5 0 0 1 5 5 5 5 0 0 1-5 5 5 5 0 0 1-5-5 5 5 0 0 1 5-5m0 2a3 3 0 0 0-3 3 3 3 0 0 0 3 3 3 3 0 0 0 3-3 3 3 0 0 0-3-3z"/>
-            </svg>
-          </div>
-          <div class="stat-content">
-            <div class="stat-label">Instagram</div>
-            <div class="stat-value" id="instagram-count">0</div>
-          </div>
+        <div class="prospects-list" id="prospects-list">
+          <!-- Prospects will be loaded here -->
         </div>
-
-        <div class="stat-card">
-          <div class="stat-icon twitter">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
-            </svg>
-          </div>
-          <div class="stat-content">
-            <div class="stat-label">Twitter</div>
-            <div class="stat-value" id="twitter-count">0</div>
-          </div>
-        </div>
-
-        <div class="stat-card">
-          <div class="stat-icon google">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M21.35 11.1h-9.17v2.73h6.51c-.33 3.81-3.5 5.44-6.5 5.44C8.36 19.27 5 16.25 5 12c0-4.1 3.2-7.27 7.2-7.27 3.09 0 4.9 1.97 4.9 1.97L19 4.72S16.56 2 12.1 2C6.42 2 2.03 6.8 2.03 12c0 5.05 4.13 10 10.22 10 5.35 0 9.25-3.67 9.25-9.09 0-1.15-.15-1.81-.15-1.81z"/>
-            </svg>
-          </div>
-          <div class="stat-content">
-            <div class="stat-label">Google</div>
-            <div class="stat-value" id="google-count">0</div>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- Rate Limits -->
-    <section class="limits-section">
-      <h2>Rate Limits</h2>
-      <div class="limits-list" id="rate-limits">
-        <!-- LinkedIn Limits -->
-        <div class="limit-item">
-          <div class="limit-header">
-            <span class="limit-platform">LinkedIn Connections</span>
-            <span class="limit-count" data-limit="linkedin_connections">0/15</span>
-          </div>
-          <div class="limit-bar">
-            <div class="limit-progress" data-progress="linkedin_connections" style="width: 0%"></div>
-          </div>
-        </div>
-
-        <div class="limit-item">
-          <div class="limit-header">
-            <span class="limit-platform">LinkedIn Messages</span>
-            <span class="limit-count" data-limit="linkedin_messages">0/40</span>
-          </div>
-          <div class="limit-bar">
-            <div class="limit-progress" data-progress="linkedin_messages" style="width: 0%"></div>
-          </div>
-        </div>
-
-        <div class="limit-item">
-          <div class="limit-header">
-            <span class="limit-platform">LinkedIn Profile Views</span>
-            <span class="limit-count" data-limit="linkedin_profile_views">0/100</span>
-          </div>
-          <div class="limit-bar">
-            <div class="limit-progress" data-progress="linkedin_profile_views" style="width: 0%"></div>
-          </div>
-        </div>
-
-        <div class="limit-item">
-          <div class="limit-header">
-            <span class="limit-platform">LinkedIn Likes</span>
-            <span class="limit-count" data-limit="linkedin_likes">0/50</span>
-          </div>
-          <div class="limit-bar">
-            <div class="limit-progress" data-progress="linkedin_likes" style="width: 0%"></div>
-          </div>
-        </div>
-      </div>
-    </section>
+      </section>
+    </div>
 
     <!-- Footer -->
     <footer class="footer">

@@ -67,13 +67,13 @@ Open extension popup:
 
 Check browser console (F12):
 ```
-[ClaudeKit Browser] ✅ Connected to Canvas WebSocket
+[10X.in Browser] ✅ Connected to Canvas WebSocket
 ```
 
 ## How It Works
 
 ```
-Claude Code (CLI)
+10X.in automation (CLI)
     ↓ Command
 Canvas Server (localhost:3000)
     ↓ WebSocket
@@ -81,7 +81,7 @@ Browser Extension
     ↓ Execute
 Target Website (LinkedIn/Instagram/etc.)
     ↓ Result
-Extension → Canvas → Claude Code
+Extension → Canvas → 10X.in automation
 ```
 
 ## Replacing Browser-Use MCP

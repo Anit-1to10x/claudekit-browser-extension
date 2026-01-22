@@ -1,7 +1,7 @@
 {
-  "name": "claudekit-browser-extension",
+  "name": "10x-browser-automation",
   "version": "1.0.0",
-  "description": "Universal browser automation extension for Claude Code with WebSocket control",
+  "description": "Universal multi-platform browser automation extension with activity tracking. Developed by team 10X.in",
   "main": "background.js",
   "scripts": {
     "test": "cd tests && node run-all-tests.js",
@@ -15,24 +15,28 @@
     "chrome-extension",
     "browser-automation",
     "websocket",
-    "claude-code",
+    "10x.in",
     "linkedin-automation",
     "instagram-automation",
     "twitter-automation",
+    "google-automation",
     "web-scraping",
     "dom-manipulation",
-    "browser-control"
+    "browser-control",
+    "activity-tracking",
+    "prospect-management",
+    "multi-platform"
   ],
-  "author": "Anit Kumar",
+  "author": "team 10X.in",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/yourusername/claudekit-browser-extension.git"
+    "url": "https://github.com/10xin/browser-automation-extension.git"
   },
   "bugs": {
-    "url": "https://github.com/yourusername/claudekit-browser-extension/issues"
+    "url": "https://github.com/10xin/browser-automation-extension/issues"
   },
-  "homepage": "https://github.com/yourusername/claudekit-browser-extension#readme",
+  "homepage": "https://github.com/10xin/browser-automation-extension#readme",
   "engines": {
     "node": ">=14.0.0"
   },

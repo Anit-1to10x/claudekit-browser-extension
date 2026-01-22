@@ -1,4 +1,4 @@
-# Installation Guide - ClaudeKit Browser Extension
+# Installation Guide - 10X.in Browser Extension
 
 Complete step-by-step installation instructions for all platforms.
 
@@ -29,7 +29,7 @@ cd claudekit-browser-extension
 **Option B: Download ZIP**
 1. Go to [GitHub repository](https://github.com/yourusername/claudekit-browser-extension)
 2. Click "Code" → "Download ZIP"
-3. Extract to a permanent folder (e.g., `C:\Extensions\ClaudeKit`)
+3. Extract to a permanent folder (e.g., `C:\Extensions\10X.in`)
 
 **Important**: Don't delete the folder after installation!
 
@@ -53,7 +53,7 @@ cd claudekit-browser-extension
 ### Step 4: Verify Installation
 
 1. Extension appears in list
-2. ClaudeKit icon appears in toolbar
+2. 10X.in icon appears in toolbar
 3. No errors shown
 
 ![Extension Loaded](https://via.placeholder.com/600x150?text=Extension+Loaded)
@@ -61,7 +61,7 @@ cd claudekit-browser-extension
 ### Step 5: Pin Extension (Optional)
 
 1. Click puzzle icon in toolbar
-2. Find "ClaudeKit Universal Browser Controller"
+2. Find "10X.in Universal Browser Controller"
 3. Click pin icon
 4. Extension icon now always visible
 
@@ -88,7 +88,7 @@ Same as Chrome - see [Chrome Step 1](#step-1-download-extension)
 
 ### Step 4: Verify Installation
 
-Extension appears in Edge toolbar with ClaudeKit icon.
+Extension appears in Edge toolbar with 10X.in icon.
 
 ---
 
@@ -267,7 +267,7 @@ If your server uses different URL/port:
 
 ### 1. Check Extension Status
 
-1. Click ClaudeKit icon in toolbar
+1. Click 10X.in icon in toolbar
 2. Popup opens
 3. **Connection Status** section shows:
    - 🟢 **Connected** (green) = Success
@@ -280,9 +280,9 @@ If your server uses different URL/port:
 2. Or: `chrome://extensions/` → Details → **Inspect views: background page**
 3. Console tab should show:
    ```
-   [ClaudeKit Browser] Extension loaded
-   [ClaudeKit Browser] Connecting to ws://localhost:3000/ws...
-   [ClaudeKit Browser] ✅ Connected to Canvas WebSocket
+   [10X.in Browser] Extension loaded
+   [10X.in Browser] Connecting to ws://localhost:3000/ws...
+   [10X.in Browser] ✅ Connected to Canvas WebSocket
    ```
 
 ### 3. Test Connection
@@ -445,7 +445,7 @@ git pull origin main
 
 Then reload extension:
 1. Go to `chrome://extensions/`
-2. Click reload icon on ClaudeKit extension
+2. Click reload icon on 10X.in extension
 
 ### Method 2: Replace Files
 
@@ -460,7 +460,7 @@ Then reload extension:
 ### Step 1: Remove Extension
 
 1. Go to `chrome://extensions/`
-2. Find "ClaudeKit Universal Browser Controller"
+2. Find "10X.in Universal Browser Controller"
 3. Click **Remove**
 4. Confirm removal
 
