@@ -18,7 +18,8 @@
     "cookies",
     "webNavigation",
     "webRequest",
-    "scripting"
+    "scripting",
+    "downloads"
   ],
 
   "host_permissions": [

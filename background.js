@@ -294,6 +294,8 @@ function handleWebSocketOpen() {
         'click',
         'type',
         'scrape',
+        'screenshot',
+        'full_page_screenshot',
         'linkedin',
         'instagram',
         'twitter',
@@ -340,6 +342,26 @@ async function handleWebSocketMessage(event) {
 
       case 'google-action':
         await executeGoogleAction(message.payload);
+        break;
+
+      case 'screenshot-request':
+        // Handle screenshot request from WebSocket (Canvas/Dashboard)
+        const screenshotResult = await captureScreenshot(message.payload || {});
+        sendToWebSocket({
+          type: 'screenshot-response',
+          requestId: message.requestId,
+          ...screenshotResult
+        });
+        break;
+
+      case 'full-page-screenshot-request':
+        // Handle full page screenshot request from WebSocket
+        const fullPageResult = await captureFullPageScreenshot(message.payload || {});
+        sendToWebSocket({
+          type: 'full-page-screenshot-response',
+          requestId: message.requestId,
+          ...fullPageResult
+        });
         break;
 
       case 'ping':
@@ -493,6 +515,14 @@ async function executeBrowserCommand(command) {
 
       case 'EXECUTE_SCRIPT':
         result = await executeScript(command.script, command.args);
+        break;
+
+      case 'SCREENSHOT':
+        result = await captureScreenshot(command.options || {});
+        break;
+
+      case 'FULL_PAGE_SCREENSHOT':
+        result = await captureFullPageScreenshot(command.options || {});
         break;
 
       default:
@@ -662,6 +692,172 @@ async function executeScript(script, args = []) {
   });
 
   return result[0].result;
+}
+
+/**
+ * Capture visible tab screenshot
+ */
+async function captureScreenshot(options = {}) {
+  const { format = 'png', quality = 100, filename = null, download = false } = options;
+
+  try {
+    // Capture the visible tab
+    const dataUrl = await chrome.tabs.captureVisibleTab(null, {
+      format: format === 'jpg' ? 'jpeg' : 'png',
+      quality: quality
+    });
+
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const defaultFilename = `screenshot_${timestamp}.${format}`;
+    const finalFilename = filename || defaultFilename;
+
+    // If download is requested, save the file
+    if (download) {
+      const downloadId = await chrome.downloads.download({
+        url: dataUrl,
+        filename: finalFilename,
+        saveAs: false
+      });
+
+      return {
+        success: true,
+        type: 'screenshot',
+        downloadId: downloadId,
+        filename: finalFilename
+      };
+    }
+
+    // Return base64 data
+    return {
+      success: true,
+      type: 'screenshot',
+      dataUrl: dataUrl,
+      format: format,
+      timestamp: timestamp
+    };
+
+  } catch (error) {
+    console.error('[10X Browser] Screenshot capture failed:', error);
+    throw error;
+  }
+}
+
+/**
+ * Capture full page screenshot by scrolling
+ */
+async function captureFullPageScreenshot(options = {}) {
+  const { format = 'png', quality = 100, filename = null, download = false } = options;
+
+  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+
+  try {
+    // Get page dimensions
+    const dimensions = await chrome.scripting.executeScript({
+      target: { tabId: tab.id },
+      func: () => {
+        return {
+          scrollHeight: Math.max(
+            document.body.scrollHeight,
+            document.documentElement.scrollHeight
+          ),
+          scrollWidth: Math.max(
+            document.body.scrollWidth,
+            document.documentElement.scrollWidth
+          ),
+          clientHeight: document.documentElement.clientHeight,
+          clientWidth: document.documentElement.clientWidth,
+          originalScrollTop: window.scrollY,
+          originalScrollLeft: window.scrollX
+        };
+      }
+    });
+
+    const { scrollHeight, clientHeight, originalScrollTop } = dimensions[0].result;
+    const screenshots = [];
+    let currentY = 0;
+
+    // Capture screenshots by scrolling
+    while (currentY < scrollHeight) {
+      // Scroll to position
+      await chrome.scripting.executeScript({
+        target: { tabId: tab.id },
+        func: (y) => window.scrollTo(0, y),
+        args: [currentY]
+      });
+
+      // Wait for scroll and render
+      await new Promise(resolve => setTimeout(resolve, 150));
+
+      // Capture visible portion
+      const screenshot = await chrome.tabs.captureVisibleTab(null, {
+        format: format === 'jpg' ? 'jpeg' : 'png',
+        quality: quality
+      });
+
+      screenshots.push({
+        dataUrl: screenshot,
+        yOffset: currentY
+      });
+
+      currentY += clientHeight;
+    }
+
+    // Restore original scroll position
+    await chrome.scripting.executeScript({
+      target: { tabId: tab.id },
+      func: (y) => window.scrollTo(0, y),
+      args: [originalScrollTop]
+    });
+
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+
+    // If only one screenshot, return directly
+    if (screenshots.length === 1) {
+      const defaultFilename = `fullpage_screenshot_${timestamp}.${format}`;
+      const finalFilename = filename || defaultFilename;
+
+      if (download) {
+        const downloadId = await chrome.downloads.download({
+          url: screenshots[0].dataUrl,
+          filename: finalFilename,
+          saveAs: false
+        });
+
+        return {
+          success: true,
+          type: 'full_page_screenshot',
+          downloadId: downloadId,
+          filename: finalFilename,
+          parts: 1
+        };
+      }
+
+      return {
+        success: true,
+        type: 'full_page_screenshot',
+        dataUrl: screenshots[0].dataUrl,
+        format: format,
+        timestamp: timestamp,
+        parts: 1
+      };
+    }
+
+    // Multiple screenshots - return all parts
+    return {
+      success: true,
+      type: 'full_page_screenshot',
+      screenshots: screenshots,
+      format: format,
+      timestamp: timestamp,
+      parts: screenshots.length,
+      totalHeight: scrollHeight,
+      viewportHeight: clientHeight
+    };
+
+  } catch (error) {
+    console.error('[10X Browser] Full page screenshot capture failed:', error);
+    throw error;
+  }
 }
 
 /**
@@ -841,6 +1037,34 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           reconnectAttempts = 0;
           connectToWebSocket();
           sendResponse({ success: true });
+          break;
+
+        case 'TAKE_SCREENSHOT':
+          // Capture screenshot from popup or content script
+          const screenshotResult = await captureScreenshot(message.options || {});
+          sendResponse(screenshotResult);
+
+          // Also send to WebSocket if connected
+          if (isConnected) {
+            sendToWebSocket({
+              type: 'screenshot-captured',
+              ...screenshotResult
+            });
+          }
+          break;
+
+        case 'TAKE_FULL_PAGE_SCREENSHOT':
+          // Capture full page screenshot
+          const fullPageResult = await captureFullPageScreenshot(message.options || {});
+          sendResponse(fullPageResult);
+
+          // Also send to WebSocket if connected
+          if (isConnected) {
+            sendToWebSocket({
+              type: 'full-page-screenshot-captured',
+              ...fullPageResult
+            });
+          }
           break;
 
         default:
