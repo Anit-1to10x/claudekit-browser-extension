@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Welcome to 10X.in Browser Automation</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    :root {
+      --primary: #6366f1;
+      --primary-dark: #4f46e5;
+      --primary-light: #818cf8;
+      --success: #10b981;
+      --gray-50: #f9fafb;
+      --gray-100: #f3f4f6;
+      --gray-200: #e5e7eb;
+      --gray-500: #6b7280;
+      --gray-700: #374151;
+      --gray-900: #111827;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      background: linear-gradient(135deg, #eef2ff 0%, #faf5ff 50%, #f0fdf4 100%);
+      min-height: 100vh;
+      color: var(--gray-900);
+      line-height: 1.6;
+    }
+
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 48px 24px;
+    }
+
+    /* Header */
+    .header {
+      text-align: center;
+      margin-bottom: 48px;
+    }
+
+    .logo {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 80px;
+      height: 80px;
+      background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+      border-radius: 20px;
+      color: white;
+      font-size: 24px;
+      font-weight: 800;
+      margin-bottom: 24px;
+      box-shadow: 0 20px 40px rgba(99, 102, 241, 0.3);
+    }
+
+    .title {
+      font-size: 32px;
+      font-weight: 700;
+      margin-bottom: 8px;
+      background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .subtitle {
+      font-size: 18px;
+      color: var(--gray-500);
+    }
+
+    /* Cards */
+    .cards {
+      display: grid;
+      gap: 24px;
+      margin-bottom: 48px;
+    }
+
+    .card {
+      background: white;
+      border-radius: 16px;
+      padding: 32px;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.15);
+    }
+
+    .card-header {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+
+    .card-icon {
+      width: 48px;
+      height: 48px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+    }
+
+    .card-icon.palette { background: #dbeafe; }
+    .card-icon.record { background: #fee2e2; }
+    .card-icon.scrape { background: #fef3c7; }
+    .card-icon.workflow { background: #dcfce7; }
+
+    .card-title {
+      font-size: 20px;
+      font-weight: 600;
+    }
+
+    .card-description {
+      color: var(--gray-500);
+      margin-bottom: 16px;
+    }
+
+    .shortcut {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 8px 12px;
+      background: var(--gray-100);
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--gray-700);
+    }
+
+    .shortcut kbd {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 4px 8px;
+      background: white;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: 600;
+      font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, monospace;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+    }
+
+    /* Features Grid */
+    .features {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+      margin-bottom: 48px;
+    }
+
+    .feature {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 16px;
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+
+    .feature-icon {
+      font-size: 24px;
+    }
+
+    .feature-text {
+      font-size: 14px;
+      font-weight: 500;
+    }
+
+    /* CTA */
+    .cta {
+      text-align: center;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 16px 32px;
+      background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+      color: white;
+      border: none;
+      border-radius: 12px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      text-decoration: none;
+      transition: transform 0.2s, box-shadow 0.2s;
+      box-shadow: 0 10px 30px rgba(99, 102, 241, 0.3);
+    }
+
+    .btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 15px 40px rgba(99, 102, 241, 0.4);
+    }
+
+    .hint {
+      margin-top: 16px;
+      font-size: 14px;
+      color: var(--gray-500);
+    }
+
+    /* Footer */
+    .footer {
+      text-align: center;
+      margin-top: 48px;
+      padding-top: 24px;
+      border-top: 1px solid var(--gray-200);
+      color: var(--gray-500);
+      font-size: 14px;
+    }
+
+    .footer a {
+      color: var(--primary);
+      text-decoration: none;
+    }
+
+    .footer a:hover {
+      text-decoration: underline;
+    }
+
+    /* Animation */
+    @keyframes fadeInUp {
+      from {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .header, .cards, .features, .cta {
+      animation: fadeInUp 0.6s ease-out forwards;
+    }
+
+    .cards { animation-delay: 0.1s; }
+    .features { animation-delay: 0.2s; }
+    .cta { animation-delay: 0.3s; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header class="header">
+      <div class="logo">10X</div>
+      <h1 class="title">Welcome to 10X.in</h1>
+      <p class="subtitle">Browser Automation</p>
+    </header>
+
+    <section class="cards">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-icon palette">🎯</div>
+          <h2 class="card-title">Command Palette</h2>
+        </div>
+        <p class="card-description">
+          Use natural language to control your browser. Just describe what you want to do
+          and 10X.in will execute it automatically.
+        </p>
+        <div class="shortcut">
+          Press <kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>K</kbd> to open
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-icon record">⏺️</div>
+          <h2 class="card-title">Action Recording</h2>
+        </div>
+        <p class="card-description">
+          Record your browser actions and replay them anytime. Perfect for
+          repetitive tasks and creating automation workflows.
+        </p>
+        <div class="shortcut">
+          Press <kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>R</kbd> to record
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-icon scrape">📋</div>
+          <h2 class="card-title">Smart Scraping</h2>
+        </div>
+        <p class="card-description">
+          Extract data from any webpage automatically. 10X.in detects tables, lists,
+          and structured content with AI-powered recognition.
+        </p>
+        <div class="shortcut">
+          Press <kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>S</kbd> to scrape
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-icon workflow">📂</div>
+          <h2 class="card-title">Workflow Builder</h2>
+        </div>
+        <p class="card-description">
+          Create complex automation workflows with our visual builder. Chain actions,
+          add conditions, and run them on schedule.
+        </p>
+        <div class="shortcut">
+          Click the extension icon to access
+        </div>
+      </div>
+    </section>
+
+    <section class="features">
+      <div class="feature">
+        <span class="feature-icon">🔄</span>
+        <span class="feature-text">Self-healing selectors</span>
+      </div>
+      <div class="feature">
+        <span class="feature-icon">🧠</span>
+        <span class="feature-text">NLP command processing</span>
+      </div>
+      <div class="feature">
+        <span class="feature-icon">🌐</span>
+        <span class="feature-text">Multi-platform support</span>
+      </div>
+      <div class="feature">
+        <span class="feature-icon">⚡</span>
+        <span class="feature-text">Lightning fast execution</span>
+      </div>
+      <div class="feature">
+        <span class="feature-icon">🔒</span>
+        <span class="feature-text">100% privacy focused</span>
+      </div>
+      <div class="feature">
+        <span class="feature-icon">💾</span>
+        <span class="feature-text">Local data storage</span>
+      </div>
+    </section>
+
+    <section class="cta">
+      <button class="btn" onclick="window.close()">
+        Get Started
+        <span>→</span>
+      </button>
+      <p class="hint">Click the 10X icon in your toolbar to begin</p>
+    </section>
+
+    <footer class="footer">
+      <p>Developed by <a href="https://10x.in" target="_blank">team 10X.in</a></p>
+      <p>Version 2.0.0</p>
+    </footer>
+  </div>
+</body>
+</html>

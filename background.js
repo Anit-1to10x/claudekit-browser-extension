@@ -6,6 +6,13 @@
  * Connects to WebSocket server and executes browser automation commands
  */
 
+/**
+ * 10X.in Universal Browser Automation v2.0 - Background Service Worker
+ * GOD-LEVEL Browser Automation
+ *
+ * Developed by team 10X.in
+ */
+
 // Configuration
 const CONFIG = {
   WEBSOCKET_URL: 'ws://localhost:3000/ws',
@@ -25,14 +32,23 @@ let pendingCommands = [];
 
 // Database stores (IndexedDB)
 const DB_NAME = '10XBrowser';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 const STORES = {
   ACTIVITIES: 'activities',
   COMMANDS: 'commands',
   RESULTS: 'results',
   SETTINGS: 'settings',
-  PROSPECTS: 'prospects'
+  PROSPECTS: 'prospects',
+  WORKFLOWS: 'workflows',
+  RECORDINGS: 'recordings',
+  SELECTORS: 'selectors',
+  SCHEDULES: 'schedules',
+  VARIABLES: 'variables'
 };
+
+// State for new features
+let lastWorkflowId = null;
+let activeRecording = null;
 
 let db = null;
 
@@ -97,6 +113,36 @@ function initDatabase() {
       // Settings store
       if (!db.objectStoreNames.contains(STORES.SETTINGS)) {
         db.createObjectStore(STORES.SETTINGS, { keyPath: 'key' });
+      }
+
+      // Workflows store (v2)
+      if (!db.objectStoreNames.contains(STORES.WORKFLOWS)) {
+        const workflowStore = db.createObjectStore(STORES.WORKFLOWS, { keyPath: 'id' });
+        workflowStore.createIndex('name', 'name', { unique: false });
+        workflowStore.createIndex('createdAt', 'createdAt', { unique: false });
+      }
+
+      // Recordings store (v2)
+      if (!db.objectStoreNames.contains(STORES.RECORDINGS)) {
+        const recordingStore = db.createObjectStore(STORES.RECORDINGS, { keyPath: 'id' });
+        recordingStore.createIndex('timestamp', 'timestamp', { unique: false });
+      }
+
+      // Selectors cache store (v2)
+      if (!db.objectStoreNames.contains(STORES.SELECTORS)) {
+        const selectorStore = db.createObjectStore(STORES.SELECTORS, { keyPath: 'key' });
+        selectorStore.createIndex('domain', 'domain', { unique: false });
+      }
+
+      // Schedules store (v2)
+      if (!db.objectStoreNames.contains(STORES.SCHEDULES)) {
+        const scheduleStore = db.createObjectStore(STORES.SCHEDULES, { keyPath: 'id' });
+        scheduleStore.createIndex('workflowId', 'workflowId', { unique: false });
+      }
+
+      // Variables store (v2)
+      if (!db.objectStoreNames.contains(STORES.VARIABLES)) {
+        db.createObjectStore(STORES.VARIABLES, { keyPath: 'key' });
       }
     };
   });
@@ -843,6 +889,207 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           sendResponse({ success: true });
           break;
 
+        // ========== Recording Handlers ==========
+        case 'RECORDING_STARTED':
+          activeRecording = { startTime: Date.now(), tabId: sender.tab?.id };
+          console.log('[10X Browser] Recording started');
+          sendResponse({ success: true });
+          break;
+
+        case 'RECORDING_STOPPED':
+          if (activeRecording) {
+            // Save recording to database
+            const recordingData = {
+              id: `rec_${Date.now()}`,
+              timestamp: activeRecording.startTime,
+              duration: Date.now() - activeRecording.startTime,
+              actionCount: message.actionCount || 0,
+              url: sender.tab?.url
+            };
+            await saveToStore(STORES.RECORDINGS, recordingData);
+          }
+          activeRecording = null;
+          sendResponse({ success: true });
+          break;
+
+        case 'START_RECORDING':
+          // Send to active tab
+          const [recTab] = await chrome.tabs.query({ active: true, currentWindow: true });
+          if (recTab) {
+            chrome.tabs.sendMessage(recTab.id, { type: 'START_RECORDING' });
+          }
+          sendResponse({ success: true });
+          break;
+
+        case 'STOP_RECORDING':
+          const [stopTab] = await chrome.tabs.query({ active: true, currentWindow: true });
+          if (stopTab) {
+            chrome.tabs.sendMessage(stopTab.id, { type: 'STOP_RECORDING' });
+          }
+          sendResponse({ success: true });
+          break;
+
+        // ========== Workflow Handlers ==========
+        case 'SAVE_WORKFLOW':
+          await saveToStore(STORES.WORKFLOWS, message.workflow);
+          lastWorkflowId = message.workflow.id;
+          sendResponse({ success: true, id: message.workflow.id });
+          break;
+
+        case 'GET_WORKFLOWS':
+          const workflows = await getAllFromStore(STORES.WORKFLOWS);
+          sendResponse({ success: true, workflows });
+          break;
+
+        case 'GET_WORKFLOW':
+          const workflow = await getFromStore(STORES.WORKFLOWS, message.id);
+          sendResponse({ success: true, workflow });
+          break;
+
+        case 'DELETE_WORKFLOW':
+          await deleteFromStore(STORES.WORKFLOWS, message.id);
+          sendResponse({ success: true });
+          break;
+
+        case 'RUN_WORKFLOW':
+          // Execute workflow in active tab
+          const [wfTab] = await chrome.tabs.query({ active: true, currentWindow: true });
+          if (wfTab) {
+            const wf = await getFromStore(STORES.WORKFLOWS, message.workflowId);
+            if (wf) {
+              chrome.tabs.sendMessage(wfTab.id, { type: 'EXECUTE_WORKFLOW', workflow: wf });
+              lastWorkflowId = message.workflowId;
+            }
+          }
+          sendResponse({ success: true });
+          break;
+
+        case 'RUN_LAST_WORKFLOW':
+          if (lastWorkflowId) {
+            const [lastTab] = await chrome.tabs.query({ active: true, currentWindow: true });
+            const lastWf = await getFromStore(STORES.WORKFLOWS, lastWorkflowId);
+            if (lastWf && lastTab) {
+              chrome.tabs.sendMessage(lastTab.id, { type: 'EXECUTE_WORKFLOW', workflow: lastWf });
+            }
+          }
+          sendResponse({ success: true, workflowId: lastWorkflowId });
+          break;
+
+        case 'GET_RECENT_WORKFLOWS':
+          const recentWfs = await getAllFromStore(STORES.WORKFLOWS);
+          const sorted = recentWfs.sort((a, b) => (b.statistics?.lastRun || 0) - (a.statistics?.lastRun || 0));
+          sendResponse({ success: true, workflows: sorted.slice(0, 5) });
+          break;
+
+        case 'WORKFLOW_ACTION':
+          // Handle workflow actions from content script
+          console.log('[10X Browser] Workflow action:', message.action);
+          sendResponse({ success: true });
+          break;
+
+        // ========== Scraping Handlers ==========
+        case 'SCRAPE_PAGE':
+          const [scrapeTab] = await chrome.tabs.query({ active: true, currentWindow: true });
+          if (scrapeTab) {
+            chrome.tabs.sendMessage(scrapeTab.id, { type: 'SCRAPE_PAGE' }, (response) => {
+              sendResponse(response || { error: 'No response from tab' });
+            });
+          } else {
+            sendResponse({ error: 'No active tab' });
+          }
+          break;
+
+        case 'EXTRACT_BY_TYPE':
+          const [extractTab] = await chrome.tabs.query({ active: true, currentWindow: true });
+          if (extractTab) {
+            chrome.tabs.sendMessage(extractTab.id, { type: 'EXTRACT_BY_TYPE', dataType: message.dataType }, (response) => {
+              sendResponse(response || { error: 'No response from tab' });
+            });
+          }
+          break;
+
+        // ========== NLP Command Handlers ==========
+        case 'EXECUTE_NLP_COMMAND':
+          const [nlpTab] = await chrome.tabs.query({ active: true, currentWindow: true });
+          if (nlpTab) {
+            chrome.tabs.sendMessage(nlpTab.id, { type: 'EXECUTE_NLP_COMMAND', parsed: message.parsed }, (response) => {
+              sendResponse(response || { error: 'No response from tab' });
+            });
+          }
+          break;
+
+        case 'PARSE_COMMAND':
+          const [parseTab] = await chrome.tabs.query({ active: true, currentWindow: true });
+          if (parseTab) {
+            chrome.tabs.sendMessage(parseTab.id, { type: 'PARSE_COMMAND', command: message.command }, (response) => {
+              sendResponse(response || { error: 'No response from tab' });
+            });
+          }
+          break;
+
+        // ========== Variables Handlers ==========
+        case 'SET_VARIABLE':
+          await saveToStore(STORES.VARIABLES, { key: message.key, value: message.value, updatedAt: Date.now() });
+          sendResponse({ success: true });
+          break;
+
+        case 'GET_VARIABLE':
+          const variable = await getFromStore(STORES.VARIABLES, message.key);
+          sendResponse({ success: true, value: variable?.value });
+          break;
+
+        case 'DELETE_VARIABLE':
+          await deleteFromStore(STORES.VARIABLES, message.key);
+          sendResponse({ success: true });
+          break;
+
+        // ========== UI Handlers ==========
+        case 'OPEN_COMMAND_PALETTE':
+          const [paletteTab] = await chrome.tabs.query({ active: true, currentWindow: true });
+          if (paletteTab) {
+            chrome.tabs.sendMessage(paletteTab.id, { type: 'OPEN_COMMAND_PALETTE' });
+          }
+          sendResponse({ success: true });
+          break;
+
+        case 'OPEN_SETTINGS':
+          chrome.runtime.openOptionsPage();
+          sendResponse({ success: true });
+          break;
+
+        case 'SHOW_HELP':
+          chrome.tabs.create({ url: 'https://10x.in/docs/extension' });
+          sendResponse({ success: true });
+          break;
+
+        case 'OPEN_WORKFLOW_BUILDER':
+          chrome.tabs.create({ url: chrome.runtime.getURL('ui/workflow-builder/builder.html') });
+          sendResponse({ success: true });
+          break;
+
+        case 'SHOW_WORKFLOWS':
+          // Could open a workflows management page
+          chrome.tabs.create({ url: chrome.runtime.getURL('ui/workflow-builder/builder.html') });
+          sendResponse({ success: true });
+          break;
+
+        // ========== Screenshot Handler ==========
+        case 'TAKE_SCREENSHOT':
+          const [ssTab] = await chrome.tabs.query({ active: true, currentWindow: true });
+          if (ssTab) {
+            const dataUrl = await chrome.tabs.captureVisibleTab(ssTab.windowId, { format: 'png' });
+            sendResponse({ success: true, dataUrl });
+          }
+          break;
+
+        // ========== Element Selection Handler ==========
+        case 'ELEMENT_SELECTED':
+          console.log('[10X Browser] Element selected:', message.info);
+          // Forward to any listeners
+          sendToWebSocket({ type: 'element-selected', info: message.info });
+          sendResponse({ success: true });
+          break;
+
         default:
           sendResponse({ error: 'Unknown message type' });
       }
@@ -855,6 +1102,56 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   return true; // Keep channel open for async response
 });
 
+// ========== Database Helper Functions ==========
+
+async function saveToStore(storeName, data) {
+  if (!db) throw new Error('Database not initialized');
+
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction([storeName], 'readwrite');
+    const store = transaction.objectStore(storeName);
+    const request = store.put(data);
+    request.onsuccess = () => resolve(data);
+    request.onerror = () => reject(request.error);
+  });
+}
+
+async function getFromStore(storeName, key) {
+  if (!db) return null;
+
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction([storeName], 'readonly');
+    const store = transaction.objectStore(storeName);
+    const request = store.get(key);
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
+  });
+}
+
+async function getAllFromStore(storeName) {
+  if (!db) return [];
+
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction([storeName], 'readonly');
+    const store = transaction.objectStore(storeName);
+    const request = store.getAll();
+    request.onsuccess = () => resolve(request.result || []);
+    request.onerror = () => reject(request.error);
+  });
+}
+
+async function deleteFromStore(storeName, key) {
+  if (!db) return;
+
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction([storeName], 'readwrite');
+    const store = transaction.objectStore(storeName);
+    const request = store.delete(key);
+    request.onsuccess = () => resolve();
+    request.onerror = () => reject(request.error);
+  });
+}
+
 // Handle extension installation
 chrome.runtime.onInstalled.addListener((details) => {
   console.log('[10X Browser] Extension installed:', details.reason);
@@ -863,4 +1160,117 @@ chrome.runtime.onInstalled.addListener((details) => {
     // Open welcome page
     chrome.tabs.create({ url: 'popup/welcome.html' });
   }
+
+  if (details.reason === 'update') {
+    console.log('[10X Browser] Extension updated to v2.0 - GOD-LEVEL features enabled');
+  }
 });
+
+// ========== Keyboard Command Handlers ==========
+
+chrome.commands.onCommand.addListener(async (command) => {
+  console.log('[10X Browser] Command received:', command);
+
+  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+  if (!tab) return;
+
+  switch (command) {
+    case 'open-command-palette':
+      chrome.tabs.sendMessage(tab.id, { type: 'OPEN_COMMAND_PALETTE' });
+      break;
+
+    case 'start-recording':
+      chrome.tabs.sendMessage(tab.id, { type: 'START_RECORDING' });
+      break;
+
+    case 'scrape-page':
+      chrome.tabs.sendMessage(tab.id, { type: 'SCRAPE_PAGE' }, (response) => {
+        if (response?.result) {
+          // Copy to clipboard via content script
+          chrome.tabs.sendMessage(tab.id, {
+            type: 'COPY_TO_CLIPBOARD',
+            text: JSON.stringify(response.result, null, 2)
+          });
+        }
+      });
+      break;
+
+    case 'run-last-workflow':
+      if (lastWorkflowId) {
+        const workflow = await getFromStore(STORES.WORKFLOWS, lastWorkflowId);
+        if (workflow) {
+          chrome.tabs.sendMessage(tab.id, { type: 'EXECUTE_WORKFLOW', workflow });
+        }
+      }
+      break;
+  }
+});
+
+// ========== Tab Orchestration ==========
+
+class TabOrchestrator {
+  constructor() {
+    this.runningTasks = new Map();
+    this.maxConcurrent = 5;
+  }
+
+  async runParallel(tasks) {
+    const queue = [...tasks];
+    const results = [];
+
+    while (queue.length > 0 || this.runningTasks.size > 0) {
+      // Start new tasks up to limit
+      while (queue.length > 0 && this.runningTasks.size < this.maxConcurrent) {
+        const task = queue.shift();
+        const tabPromise = this.executeInNewTab(task);
+        this.runningTasks.set(task.id, tabPromise);
+      }
+
+      // Wait for any to complete
+      if (this.runningTasks.size > 0) {
+        const completed = await Promise.race([...this.runningTasks.values()]);
+        results.push(completed);
+        this.runningTasks.delete(completed.taskId);
+      }
+    }
+
+    return results;
+  }
+
+  async executeInNewTab(task) {
+    const tab = await chrome.tabs.create({ url: task.url, active: false });
+
+    // Wait for page load
+    await new Promise(resolve => {
+      const listener = (tabId, info) => {
+        if (tabId === tab.id && info.status === 'complete') {
+          chrome.tabs.onUpdated.removeListener(listener);
+          resolve();
+        }
+      };
+      chrome.tabs.onUpdated.addListener(listener);
+    });
+
+    // Execute task actions
+    let result = null;
+    try {
+      for (const action of task.actions || []) {
+        await chrome.tabs.sendMessage(tab.id, action);
+      }
+      result = { taskId: task.id, success: true };
+    } catch (error) {
+      result = { taskId: task.id, success: false, error: error.message };
+    }
+
+    // Close tab if requested
+    if (task.closeOnComplete) {
+      await chrome.tabs.remove(tab.id);
+    }
+
+    return result;
+  }
+}
+
+const tabOrchestrator = new TabOrchestrator();
+
+console.log('[10X Browser] Background service worker v2.0 initialized');

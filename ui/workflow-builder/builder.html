@@ -1,0 +1,1018 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>10X.in Workflow Builder</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    :root {
+      --primary: #6366f1;
+      --primary-dark: #4f46e5;
+      --success: #10b981;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+      --gray-50: #f9fafb;
+      --gray-100: #f3f4f6;
+      --gray-200: #e5e7eb;
+      --gray-300: #d1d5db;
+      --gray-400: #9ca3af;
+      --gray-500: #6b7280;
+      --gray-600: #4b5563;
+      --gray-700: #374151;
+      --gray-800: #1f2937;
+      --gray-900: #111827;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--gray-100);
+      min-height: 100vh;
+      color: var(--gray-900);
+    }
+
+    .app {
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+    }
+
+    /* Header */
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 24px;
+      background: white;
+      border-bottom: 1px solid var(--gray-200);
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .logo-icon {
+      width: 36px;
+      height: 36px;
+      background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-weight: 800;
+      font-size: 12px;
+    }
+
+    .logo-text {
+      font-size: 18px;
+      font-weight: 700;
+    }
+
+    .workflow-name {
+      padding: 8px 12px;
+      border: 1px solid var(--gray-300);
+      border-radius: 6px;
+      font-size: 14px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .workflow-name:focus {
+      border-color: var(--primary);
+    }
+
+    .header-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    .btn {
+      padding: 8px 16px;
+      border: none;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .btn-primary {
+      background: var(--primary);
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background: var(--primary-dark);
+    }
+
+    .btn-secondary {
+      background: var(--gray-100);
+      color: var(--gray-700);
+      border: 1px solid var(--gray-300);
+    }
+
+    .btn-secondary:hover {
+      background: var(--gray-200);
+    }
+
+    .btn-success {
+      background: var(--success);
+      color: white;
+    }
+
+    .btn-success:hover {
+      background: #059669;
+    }
+
+    /* Main Content */
+    .main {
+      display: flex;
+      flex: 1;
+      overflow: hidden;
+    }
+
+    /* Sidebar */
+    .sidebar {
+      width: 280px;
+      background: white;
+      border-right: 1px solid var(--gray-200);
+      display: flex;
+      flex-direction: column;
+    }
+
+    .sidebar-section {
+      padding: 16px;
+      border-bottom: 1px solid var(--gray-200);
+    }
+
+    .sidebar-title {
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      color: var(--gray-500);
+      margin-bottom: 12px;
+    }
+
+    .action-list {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .action-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 12px;
+      border-radius: 6px;
+      cursor: grab;
+      transition: all 0.2s;
+      border: 1px solid transparent;
+    }
+
+    .action-item:hover {
+      background: var(--gray-50);
+      border-color: var(--gray-200);
+    }
+
+    .action-item:active {
+      cursor: grabbing;
+    }
+
+    .action-icon {
+      width: 32px;
+      height: 32px;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+    }
+
+    .action-icon.click { background: #dbeafe; }
+    .action-icon.type { background: #dcfce7; }
+    .action-icon.navigate { background: #fef3c7; }
+    .action-icon.wait { background: #f3e8ff; }
+    .action-icon.scrape { background: #ffedd5; }
+    .action-icon.condition { background: #fce7f3; }
+    .action-icon.loop { background: #e0e7ff; }
+
+    .action-info {
+      flex: 1;
+    }
+
+    .action-name {
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--gray-800);
+    }
+
+    .action-desc {
+      font-size: 12px;
+      color: var(--gray-500);
+    }
+
+    /* Canvas */
+    .canvas-container {
+      flex: 1;
+      overflow: auto;
+      padding: 24px;
+    }
+
+    .canvas {
+      min-height: 100%;
+      background: white;
+      border-radius: 12px;
+      border: 2px dashed var(--gray-300);
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .canvas.has-steps {
+      border-style: solid;
+      border-color: var(--gray-200);
+    }
+
+    .canvas-empty {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 48px;
+      color: var(--gray-500);
+      text-align: center;
+    }
+
+    .canvas-empty-icon {
+      font-size: 48px;
+      margin-bottom: 16px;
+    }
+
+    .canvas-empty-text {
+      font-size: 16px;
+      margin-bottom: 8px;
+    }
+
+    .canvas-empty-hint {
+      font-size: 13px;
+      color: var(--gray-400);
+    }
+
+    /* Workflow Step */
+    .workflow-step {
+      width: 100%;
+      max-width: 400px;
+      background: white;
+      border: 1px solid var(--gray-200);
+      border-radius: 10px;
+      overflow: hidden;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+
+    .step-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 16px;
+      background: var(--gray-50);
+      border-bottom: 1px solid var(--gray-200);
+    }
+
+    .step-number {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: var(--primary);
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .step-title {
+      flex: 1;
+      font-weight: 500;
+    }
+
+    .step-actions {
+      display: flex;
+      gap: 4px;
+    }
+
+    .step-action-btn {
+      width: 28px;
+      height: 28px;
+      border: none;
+      border-radius: 4px;
+      background: transparent;
+      color: var(--gray-500);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .step-action-btn:hover {
+      background: var(--gray-200);
+      color: var(--gray-700);
+    }
+
+    .step-body {
+      padding: 16px;
+    }
+
+    .step-field {
+      margin-bottom: 12px;
+    }
+
+    .step-field:last-child {
+      margin-bottom: 0;
+    }
+
+    .step-field label {
+      display: block;
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--gray-600);
+      margin-bottom: 4px;
+    }
+
+    .step-field input,
+    .step-field select,
+    .step-field textarea {
+      width: 100%;
+      padding: 8px 10px;
+      border: 1px solid var(--gray-300);
+      border-radius: 6px;
+      font-size: 13px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .step-field input:focus,
+    .step-field select:focus,
+    .step-field textarea:focus {
+      border-color: var(--primary);
+    }
+
+    /* Connector */
+    .connector {
+      width: 2px;
+      height: 32px;
+      background: var(--gray-300);
+      position: relative;
+    }
+
+    .connector::after {
+      content: '';
+      position: absolute;
+      bottom: -4px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 0;
+      height: 0;
+      border-left: 6px solid transparent;
+      border-right: 6px solid transparent;
+      border-top: 6px solid var(--gray-300);
+    }
+
+    /* Add Step Button */
+    .add-step-btn {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      border: 2px dashed var(--gray-300);
+      background: white;
+      color: var(--gray-400);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+      transition: all 0.2s;
+    }
+
+    .add-step-btn:hover {
+      border-color: var(--primary);
+      color: var(--primary);
+      background: var(--gray-50);
+    }
+
+    /* Properties Panel */
+    .properties-panel {
+      width: 320px;
+      background: white;
+      border-left: 1px solid var(--gray-200);
+      display: flex;
+      flex-direction: column;
+    }
+
+    .panel-header {
+      padding: 16px;
+      border-bottom: 1px solid var(--gray-200);
+    }
+
+    .panel-title {
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    .panel-content {
+      flex: 1;
+      padding: 16px;
+      overflow-y: auto;
+    }
+
+    .empty-panel {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      color: var(--gray-400);
+      text-align: center;
+      padding: 24px;
+    }
+
+    .empty-panel-icon {
+      font-size: 32px;
+      margin-bottom: 12px;
+    }
+
+    /* Saved Workflows */
+    .saved-workflows {
+      flex: 1;
+      overflow-y: auto;
+    }
+
+    .workflow-card {
+      padding: 12px;
+      border: 1px solid var(--gray-200);
+      border-radius: 8px;
+      margin-bottom: 8px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .workflow-card:hover {
+      border-color: var(--primary);
+      background: var(--gray-50);
+    }
+
+    .workflow-card-name {
+      font-weight: 500;
+      margin-bottom: 4px;
+    }
+
+    .workflow-card-meta {
+      font-size: 12px;
+      color: var(--gray-500);
+    }
+
+    /* Notification */
+    .notification {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      padding: 12px 20px;
+      background: var(--gray-800);
+      color: white;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      transform: translateY(100px);
+      opacity: 0;
+      transition: all 0.3s;
+      z-index: 1000;
+    }
+
+    .notification.show {
+      transform: translateY(0);
+      opacity: 1;
+    }
+
+    .notification.success {
+      background: var(--success);
+    }
+
+    .notification.error {
+      background: var(--danger);
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header class="header">
+      <div class="header-left">
+        <div class="logo">
+          <div class="logo-icon">10X</div>
+          <span class="logo-text">Workflow Builder</span>
+        </div>
+        <input type="text" class="workflow-name" id="workflow-name" placeholder="Untitled Workflow" value="New Workflow">
+      </div>
+      <div class="header-actions">
+        <button class="btn btn-secondary" id="import-btn">Import</button>
+        <button class="btn btn-secondary" id="export-btn">Export</button>
+        <button class="btn btn-primary" id="save-btn">Save</button>
+        <button class="btn btn-success" id="run-btn">Run</button>
+      </div>
+    </header>
+
+    <main class="main">
+      <aside class="sidebar">
+        <div class="sidebar-section">
+          <h3 class="sidebar-title">Actions</h3>
+          <div class="action-list" id="action-list">
+            <div class="action-item" draggable="true" data-action="click">
+              <div class="action-icon click">🖱️</div>
+              <div class="action-info">
+                <div class="action-name">Click</div>
+                <div class="action-desc">Click an element</div>
+              </div>
+            </div>
+            <div class="action-item" draggable="true" data-action="type">
+              <div class="action-icon type">⌨️</div>
+              <div class="action-info">
+                <div class="action-name">Type</div>
+                <div class="action-desc">Enter text into a field</div>
+              </div>
+            </div>
+            <div class="action-item" draggable="true" data-action="navigate">
+              <div class="action-icon navigate">🌐</div>
+              <div class="action-info">
+                <div class="action-name">Navigate</div>
+                <div class="action-desc">Go to a URL</div>
+              </div>
+            </div>
+            <div class="action-item" draggable="true" data-action="wait">
+              <div class="action-icon wait">⏱️</div>
+              <div class="action-info">
+                <div class="action-name">Wait</div>
+                <div class="action-desc">Pause execution</div>
+              </div>
+            </div>
+            <div class="action-item" draggable="true" data-action="scrape">
+              <div class="action-icon scrape">📋</div>
+              <div class="action-info">
+                <div class="action-name">Scrape</div>
+                <div class="action-desc">Extract data from page</div>
+              </div>
+            </div>
+            <div class="action-item" draggable="true" data-action="condition">
+              <div class="action-icon condition">🔀</div>
+              <div class="action-info">
+                <div class="action-name">Condition</div>
+                <div class="action-desc">If/else branching</div>
+              </div>
+            </div>
+            <div class="action-item" draggable="true" data-action="loop">
+              <div class="action-icon loop">🔄</div>
+              <div class="action-info">
+                <div class="action-name">Loop</div>
+                <div class="action-desc">Repeat actions</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="sidebar-section">
+          <h3 class="sidebar-title">Saved Workflows</h3>
+          <div class="saved-workflows" id="saved-workflows">
+            <!-- Populated dynamically -->
+          </div>
+        </div>
+      </aside>
+
+      <div class="canvas-container">
+        <div class="canvas" id="canvas">
+          <div class="canvas-empty" id="canvas-empty">
+            <div class="canvas-empty-icon">🔧</div>
+            <div class="canvas-empty-text">Build Your Workflow</div>
+            <div class="canvas-empty-hint">Drag actions from the sidebar or click + to add steps</div>
+          </div>
+        </div>
+      </div>
+
+      <aside class="properties-panel">
+        <div class="panel-header">
+          <h3 class="panel-title">Properties</h3>
+        </div>
+        <div class="panel-content" id="properties-content">
+          <div class="empty-panel">
+            <div class="empty-panel-icon">📝</div>
+            <p>Select a step to edit its properties</p>
+          </div>
+        </div>
+      </aside>
+    </main>
+  </div>
+
+  <div class="notification" id="notification"></div>
+
+  <script>
+    /**
+     * 10X.in Workflow Builder
+     * Visual workflow editor for browser automation
+     */
+
+    let workflow = {
+      id: `wf_${Date.now()}`,
+      name: 'New Workflow',
+      steps: [],
+      createdAt: Date.now(),
+      updatedAt: Date.now()
+    };
+
+    let selectedStepIndex = null;
+
+    // DOM Elements
+    const canvas = document.getElementById('canvas');
+    const canvasEmpty = document.getElementById('canvas-empty');
+    const workflowNameInput = document.getElementById('workflow-name');
+    const propertiesContent = document.getElementById('properties-content');
+    const savedWorkflowsContainer = document.getElementById('saved-workflows');
+    const notification = document.getElementById('notification');
+
+    // Initialize
+    document.addEventListener('DOMContentLoaded', () => {
+      setupDragAndDrop();
+      setupEventListeners();
+      loadSavedWorkflows();
+    });
+
+    function setupDragAndDrop() {
+      const actionItems = document.querySelectorAll('.action-item');
+
+      actionItems.forEach(item => {
+        item.addEventListener('dragstart', (e) => {
+          e.dataTransfer.setData('action', item.dataset.action);
+        });
+      });
+
+      canvas.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        canvas.style.borderColor = 'var(--primary)';
+      });
+
+      canvas.addEventListener('dragleave', () => {
+        canvas.style.borderColor = '';
+      });
+
+      canvas.addEventListener('drop', (e) => {
+        e.preventDefault();
+        canvas.style.borderColor = '';
+        const action = e.dataTransfer.getData('action');
+        if (action) {
+          addStep(action);
+        }
+      });
+    }
+
+    function setupEventListeners() {
+      workflowNameInput.addEventListener('input', (e) => {
+        workflow.name = e.target.value;
+      });
+
+      document.getElementById('save-btn').addEventListener('click', saveWorkflow);
+      document.getElementById('run-btn').addEventListener('click', runWorkflow);
+      document.getElementById('export-btn').addEventListener('click', exportWorkflow);
+      document.getElementById('import-btn').addEventListener('click', importWorkflow);
+    }
+
+    function addStep(action) {
+      const step = createStep(action);
+      workflow.steps.push(step);
+      renderCanvas();
+      selectStep(workflow.steps.length - 1);
+    }
+
+    function createStep(action) {
+      const templates = {
+        click: { action: 'click', selector: '', description: 'Click element' },
+        type: { action: 'type', selector: '', text: '', description: 'Type text' },
+        navigate: { action: 'navigate', url: '', description: 'Navigate to URL' },
+        wait: { action: 'wait', duration: 1000, description: 'Wait' },
+        scrape: { action: 'scrape', selectors: {}, description: 'Scrape data' },
+        condition: { action: 'condition', condition: '', thenSteps: [], elseSteps: [], description: 'Condition' },
+        loop: { action: 'loop', count: 1, steps: [], description: 'Loop' }
+      };
+
+      return { id: `step_${Date.now()}`, ...templates[action] };
+    }
+
+    function renderCanvas() {
+      // Clear canvas
+      canvas.innerHTML = '';
+
+      if (workflow.steps.length === 0) {
+        canvas.appendChild(canvasEmpty);
+        canvas.classList.remove('has-steps');
+        return;
+      }
+
+      canvas.classList.add('has-steps');
+
+      workflow.steps.forEach((step, index) => {
+        if (index > 0) {
+          const connector = document.createElement('div');
+          connector.className = 'connector';
+          canvas.appendChild(connector);
+        }
+
+        const stepEl = createStepElement(step, index);
+        canvas.appendChild(stepEl);
+      });
+
+      // Add button at the end
+      const addBtn = document.createElement('button');
+      addBtn.className = 'add-step-btn';
+      addBtn.innerHTML = '+';
+      addBtn.onclick = () => showActionPicker();
+      canvas.appendChild(addBtn);
+    }
+
+    function createStepElement(step, index) {
+      const el = document.createElement('div');
+      el.className = 'workflow-step';
+      el.dataset.index = index;
+
+      const actionIcons = {
+        click: '🖱️',
+        type: '⌨️',
+        navigate: '🌐',
+        wait: '⏱️',
+        scrape: '📋',
+        condition: '🔀',
+        loop: '🔄'
+      };
+
+      el.innerHTML = `
+        <div class="step-header">
+          <div class="step-number">${index + 1}</div>
+          <div class="step-title">${actionIcons[step.action]} ${step.description || step.action}</div>
+          <div class="step-actions">
+            <button class="step-action-btn" onclick="moveStep(${index}, -1)" title="Move up">↑</button>
+            <button class="step-action-btn" onclick="moveStep(${index}, 1)" title="Move down">↓</button>
+            <button class="step-action-btn" onclick="deleteStep(${index})" title="Delete">×</button>
+          </div>
+        </div>
+        <div class="step-body">
+          ${renderStepBody(step)}
+        </div>
+      `;
+
+      el.onclick = (e) => {
+        if (!e.target.closest('.step-action-btn')) {
+          selectStep(index);
+        }
+      };
+
+      return el;
+    }
+
+    function renderStepBody(step) {
+      switch (step.action) {
+        case 'click':
+          return `<div class="step-field">
+            <label>Selector</label>
+            <input type="text" value="${step.selector || ''}" placeholder="CSS selector or text">
+          </div>`;
+        case 'type':
+          return `<div class="step-field">
+            <label>Selector</label>
+            <input type="text" value="${step.selector || ''}" placeholder="CSS selector">
+          </div>
+          <div class="step-field">
+            <label>Text</label>
+            <input type="text" value="${step.text || ''}" placeholder="Text to type">
+          </div>`;
+        case 'navigate':
+          return `<div class="step-field">
+            <label>URL</label>
+            <input type="text" value="${step.url || ''}" placeholder="https://...">
+          </div>`;
+        case 'wait':
+          return `<div class="step-field">
+            <label>Duration (ms)</label>
+            <input type="number" value="${step.duration || 1000}" min="0">
+          </div>`;
+        case 'scrape':
+          return `<div class="step-field">
+            <label>Data Fields</label>
+            <textarea placeholder="field1: selector1&#10;field2: selector2"></textarea>
+          </div>`;
+        default:
+          return '<p>Configure in properties panel</p>';
+      }
+    }
+
+    function selectStep(index) {
+      selectedStepIndex = index;
+      renderProperties();
+
+      // Highlight selected step
+      document.querySelectorAll('.workflow-step').forEach((el, i) => {
+        el.style.borderColor = i === index ? 'var(--primary)' : '';
+      });
+    }
+
+    function renderProperties() {
+      if (selectedStepIndex === null || !workflow.steps[selectedStepIndex]) {
+        propertiesContent.innerHTML = `
+          <div class="empty-panel">
+            <div class="empty-panel-icon">📝</div>
+            <p>Select a step to edit its properties</p>
+          </div>`;
+        return;
+      }
+
+      const step = workflow.steps[selectedStepIndex];
+      propertiesContent.innerHTML = `
+        <div class="step-field">
+          <label>Description</label>
+          <input type="text" id="prop-description" value="${step.description || ''}" placeholder="Step description">
+        </div>
+        ${renderPropertiesForAction(step)}
+      `;
+
+      // Add change listeners
+      propertiesContent.querySelectorAll('input, textarea, select').forEach(input => {
+        input.addEventListener('change', (e) => {
+          const prop = e.target.id.replace('prop-', '');
+          workflow.steps[selectedStepIndex][prop] = e.target.value;
+          renderCanvas();
+        });
+      });
+    }
+
+    function renderPropertiesForAction(step) {
+      // Extended properties based on action type
+      return '';
+    }
+
+    function moveStep(index, direction) {
+      const newIndex = index + direction;
+      if (newIndex < 0 || newIndex >= workflow.steps.length) return;
+
+      const temp = workflow.steps[index];
+      workflow.steps[index] = workflow.steps[newIndex];
+      workflow.steps[newIndex] = temp;
+
+      if (selectedStepIndex === index) {
+        selectedStepIndex = newIndex;
+      } else if (selectedStepIndex === newIndex) {
+        selectedStepIndex = index;
+      }
+
+      renderCanvas();
+    }
+
+    function deleteStep(index) {
+      workflow.steps.splice(index, 1);
+      if (selectedStepIndex === index) {
+        selectedStepIndex = null;
+      } else if (selectedStepIndex > index) {
+        selectedStepIndex--;
+      }
+      renderCanvas();
+      renderProperties();
+    }
+
+    function showActionPicker() {
+      // Simple: just add a click action for now
+      addStep('click');
+    }
+
+    async function saveWorkflow() {
+      workflow.updatedAt = Date.now();
+
+      try {
+        await chrome.runtime.sendMessage({
+          type: 'SAVE_WORKFLOW',
+          workflow: workflow
+        });
+        showNotification('Workflow saved!', 'success');
+        loadSavedWorkflows();
+      } catch (error) {
+        console.error('Failed to save workflow:', error);
+        showNotification('Failed to save workflow', 'error');
+      }
+    }
+
+    async function runWorkflow() {
+      try {
+        await chrome.runtime.sendMessage({
+          type: 'RUN_WORKFLOW',
+          workflowId: workflow.id
+        });
+        showNotification('Workflow started!', 'success');
+      } catch (error) {
+        console.error('Failed to run workflow:', error);
+        showNotification('Failed to run workflow', 'error');
+      }
+    }
+
+    function exportWorkflow() {
+      const json = JSON.stringify(workflow, null, 2);
+      const blob = new Blob([json], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${workflow.name.replace(/\s+/g, '-').toLowerCase()}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+      showNotification('Workflow exported!', 'success');
+    }
+
+    function importWorkflow() {
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = '.json';
+      input.onchange = async (e) => {
+        const file = e.target.files[0];
+        if (file) {
+          const text = await file.text();
+          try {
+            const imported = JSON.parse(text);
+            workflow = imported;
+            workflow.id = `wf_${Date.now()}`;
+            workflowNameInput.value = workflow.name;
+            renderCanvas();
+            showNotification('Workflow imported!', 'success');
+          } catch (error) {
+            showNotification('Invalid workflow file', 'error');
+          }
+        }
+      };
+      input.click();
+    }
+
+    async function loadSavedWorkflows() {
+      try {
+        const response = await chrome.runtime.sendMessage({ type: 'GET_WORKFLOWS' });
+        if (response && response.success && response.workflows) {
+          renderSavedWorkflows(response.workflows);
+        }
+      } catch (error) {
+        console.log('Could not load workflows:', error);
+      }
+    }
+
+    function renderSavedWorkflows(workflows) {
+      savedWorkflowsContainer.innerHTML = workflows.map(wf => `
+        <div class="workflow-card" onclick="loadWorkflow('${wf.id}')">
+          <div class="workflow-card-name">${wf.name}</div>
+          <div class="workflow-card-meta">${wf.steps?.length || 0} steps</div>
+        </div>
+      `).join('');
+    }
+
+    async function loadWorkflow(id) {
+      try {
+        const response = await chrome.runtime.sendMessage({ type: 'GET_WORKFLOW', id });
+        if (response && response.success && response.workflow) {
+          workflow = response.workflow;
+          workflowNameInput.value = workflow.name;
+          renderCanvas();
+          showNotification('Workflow loaded!', 'success');
+        }
+      } catch (error) {
+        showNotification('Failed to load workflow', 'error');
+      }
+    }
+
+    function showNotification(message, type = 'info') {
+      notification.textContent = message;
+      notification.className = `notification show ${type}`;
+      setTimeout(() => {
+        notification.classList.remove('show');
+      }, 3000);
+    }
+
+    // Initial render
+    renderCanvas();
+  </script>
+</body>
+</html>
